@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PER · PBR 완전 가이드</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+/* ── Reset & Base ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:      #080b12;
+  --bg1:     #0d1220;
+  --bg2:     #111827;
+  --bg3:     #1a2235;
+  --bd:      rgba(255,255,255,.06);
+  --bd2:     rgba(255,255,255,.12);
+  --tx:      #e2e8f4;
+  --tx2:     #8b95b0;
+  --tx3:     #4a5568;
+  --up:      #34d399;
+  --up2:     rgba(52,211,153,.12);
+  --dn:      #f87171;
+  --dn2:     rgba(248,113,113,.12);
+  --am:      #fbbf24;
+  --am2:     rgba(251,191,36,.12);
+  --bl:      #60a5fa;
+  --bl2:     rgba(96,165,250,.12);
+  --pu:      #a78bfa;
+  --r:       12px;
+  --r2:      8px;
+  --mono:    'JetBrains Mono', monospace;
+  --sans:    'Noto Sans KR', sans-serif;
+  --display: 'Syne', sans-serif;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--tx);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.6;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── Background Grid ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(96,165,250,.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(96,165,250,.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Hero ── */
+.hero {
+  position: relative;
+  padding: 80px 24px 60px;
+  text-align: center;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -100px; left: 50%; transform: translateX(-50%);
+  width: 600px; height: 400px;
+  background: radial-gradient(ellipse, rgba(96,165,250,.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.hero-eyebrow {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 2px;
+  color: var(--bl);
+  border: 1px solid rgba(96,165,250,.3);
+  padding: 4px 14px;
+  border-radius: 20px;
+  margin-bottom: 20px;
+  text-transform: uppercase;
+}
+
+.hero h1 {
+  font-family: var(--display);
+  font-size: clamp(36px, 6vw, 64px);
+  font-weight: 800;
+  letter-spacing: -1px;
+  line-height: 1.1;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, #e2e8f4 0%, #60a5fa 50%, #a78bfa 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.hero-sub {
+  font-size: 16px;
+  color: var(--tx2);
+  max-width: 500px;
+  margin: 0 auto 36px;
+  line-height: 1.7;
+}
+
+/* nav pills */
+.nav-pills {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.nav-pill {
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 6px 16px;
+  border-radius: 20px;
+  border: 1px solid var(--bd2);
+  color: var(--tx2);
+  text-decoration: none;
+  transition: all .2s;
+  background: var(--bg1);
+}
+.nav-pill:hover { border-color: var(--bl); color: var(--bl); background: var(--bl2); }
+
+/* ── Layout ── */
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 24px 80px;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Section Headers ── */
+.section {
+  margin-bottom: 64px;
+  scroll-margin-top: 24px;
+}
+
+.section-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 4px 12px;
+  border-radius: 4px;
+  margin-bottom: 12px;
+}
+
+.section-title {
+  font-family: var(--display);
+  font-size: clamp(24px, 4vw, 36px);
+  font-weight: 700;
+  letter-spacing: -.5px;
+  margin-bottom: 6px;
+}
+
+.section-desc {
+  font-size: 14px;
+  color: var(--tx2);
+  margin-bottom: 28px;
+  line-height: 1.7;
+}
+
+/* ── Formula Card ── */
+.formula-card {
+  background: linear-gradient(135deg, var(--bg2) 0%, var(--bg3) 100%);
+  border: 1px solid var(--bd2);
+  border-radius: var(--r);
+  padding: 28px 32px;
+  text-align: center;
+  margin-bottom: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.formula-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+}
+
+.formula-card.blue::before { background: linear-gradient(90deg, transparent, var(--bl), transparent); }
+.formula-card.green::before { background: linear-gradient(90deg, transparent, var(--up), transparent); }
+
+.formula-main {
+  font-family: var(--mono);
+  font-size: clamp(16px, 3vw, 22px);
+  font-weight: 600;
+  color: var(--tx);
+  margin-bottom: 10px;
+  letter-spacing: .5px;
+}
+
+.formula-highlight { color: var(--bl); }
+.formula-highlight.green { color: var(--up); }
+
+.formula-example {
+  font-size: 13px;
+  color: var(--tx2);
+  background: rgba(255,255,255,.04);
+  border-radius: 6px;
+  padding: 8px 16px;
+  display: inline-block;
+}
+
+/* ── Analogy Box ── */
+.analogy {
+  background: var(--bg2);
+  border: 1px solid var(--bd);
+  border-left: 3px solid var(--am);
+  border-radius: 0 var(--r) var(--r) 0;
+  padding: 18px 20px;
+  margin-bottom: 24px;
+}
+
+.analogy-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--am);
+  margin-bottom: 10px;
+  letter-spacing: .5px;
+}
+
+.analogy-body {
+  font-size: 13px;
+  color: var(--tx);
+  line-height: 1.8;
+}
+
+.analogy-muted { color: var(--tx2); }
+
+/* ── Range Bar ── */
+.range-wrap { margin: 24px 0; }
+
+.range-label-top {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--tx2);
+  margin-bottom: 10px;
+}
+
+.range-bar {
+  display: flex;
+  height: 36px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--bd);
+}
+
+.range-seg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  transition: opacity .2s;
+  cursor: default;
+  position: relative;
+}
+
+.range-seg:hover { opacity: .85; }
+
+.range-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  padding: 0 2px;
+}
+
+.range-labels span { font-size: 10px; }
+
+/* ── Table ── */
+.table-wrap {
+  background: var(--bg1);
+  border: 1px solid var(--bd);
+  border-radius: var(--r);
+  overflow: hidden;
+  margin: 20px 0;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+thead th {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--tx3);
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--bd);
+  text-align: left;
+  background: var(--bg2);
+}
+
+tbody tr {
+  border-bottom: 1px solid var(--bd);
+  transition: background .1s;
+}
+
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: rgba(255,255,255,.02); }
+
+tbody td {
+  padding: 11px 16px;
+  font-size: 13px;
+  vertical-align: middle;
+}
+
+.td-ticker {
+  font-family: var(--mono);
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--tx);
+}
+
+.td-muted { color: var(--tx2); font-size: 11px; margin-top: 2px; }
+
+.td-val {
+  font-family: var(--mono);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.td-note { color: var(--tx2); font-size: 11px; line-height: 1.5; }
+
+/* ── Badges ── */
+.badge {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.b-vlo  { background: rgba(52,211,153,.2);  color: #34d399; }
+.b-lo   { background: rgba(52,211,153,.13); color: #6ee7b7; }
+.b-mi   { background: rgba(251,191,36,.13); color: #fbbf24; }
+.b-hi   { background: rgba(248,113,113,.13); color: #f87171; }
+.b-vhi  { background: rgba(220,38,38,.2);   color: #fc8181; }
+.b-na   { background: rgba(100,116,139,.13); color: #94a3b8; }
+
+/* ── Compare Grid ── */
+.cmp-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 20px 0;
+}
+
+.cmp-card {
+  background: var(--bg2);
+  border: 1px solid var(--bd);
+  border-radius: var(--r);
+  padding: 18px 20px;
+}
+
+.cmp-card-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--tx2);
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+
+.cmp-card-body {
+  font-size: 13px;
+  color: var(--tx);
+  line-height: 1.8;
+}
+
+.cmp-card-sub { font-size: 11px; color: var(--tx2); margin-top: 4px; }
+
+/* ── Use-case Table ── */
+.use-table-wrap {
+  background: var(--bg1);
+  border: 1px solid var(--bd);
+  border-radius: var(--r);
+  overflow: hidden;
+  margin: 20px 0;
+}
+
+/* ── Warning / Note ── */
+.note-box {
+  border-radius: var(--r);
+  padding: 20px 22px;
+  margin: 24px 0;
+}
+
+.note-box.warn {
+  background: rgba(251,191,36,.05);
+  border: 1px solid rgba(251,191,36,.2);
+}
+
+.note-box.tip {
+  background: rgba(52,211,153,.05);
+  border: 1px solid rgba(52,211,153,.2);
+}
+
+.note-title {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.note-box.warn .note-title { color: var(--am); }
+.note-box.tip  .note-title { color: var(--up); }
+
+.note-li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.note-li:last-child { margin-bottom: 0; }
+
+.note-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 6px;
+}
+
+.note-li p { font-size: 13px; color: var(--tx2); line-height: 1.65; }
+.note-li p strong { color: var(--tx); }
+
+/* ── ROE box ── */
+.roe-box {
+  background: var(--bg2);
+  border: 1px solid var(--bd2);
+  border-radius: var(--r);
+  padding: 24px 28px;
+  margin: 24px 0;
+  text-align: center;
+}
+
+.roe-formula {
+  font-family: var(--mono);
+  font-size: clamp(14px, 2.5vw, 18px);
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: var(--tx);
+}
+
+.roe-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 16px;
+  text-align: left;
+}
+
+.roe-card {
+  background: rgba(255,255,255,.03);
+  border: 1px solid var(--bd);
+  border-radius: var(--r2);
+  padding: 14px 16px;
+}
+
+.roe-card-label { font-size: 11px; color: var(--tx2); margin-bottom: 4px; }
+.roe-card-val { font-family: var(--mono); font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+.roe-card-desc { font-size: 11px; color: var(--tx2); line-height: 1.5; }
+
+/* ── Footer ── */
+.footer {
+  text-align: center;
+  padding: 40px 24px;
+  border-top: 1px solid var(--bd);
+  color: var(--tx3);
+  font-size: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Divider ── */
+.divider {
+  border: none;
+  border-top: 1px solid var(--bd);
+  margin: 56px 0;
+}
+
+/* ── Scroll indicator ── */
+.scroll-line {
+  position: fixed;
+  top: 0; left: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--bl), var(--pu));
+  z-index: 999;
+  transition: width .1s linear;
+  width: 0%;
+}
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+  .cmp-grid { grid-template-columns: 1fr; }
+  .roe-cards { grid-template-columns: 1fr; }
+  .range-seg { font-size: 9px; }
+  table th:nth-child(4), table td:nth-child(4) { display: none; }
+  .formula-main { font-size: 14px; }
+}
+
+/* ── Animations ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.section {
+  animation: fadeUp .5s ease both;
+}
+
+.section:nth-child(1) { animation-delay: .0s; }
+.section:nth-child(2) { animation-delay: .1s; }
+.section:nth-child(3) { animation-delay: .2s; }
+.section:nth-child(4) { animation-delay: .3s; }
+
+/* color helpers */
+.c-up  { color: var(--up); }
+.c-dn  { color: var(--dn); }
+.c-am  { color: var(--am); }
+.c-bl  { color: var(--bl); }
+.c-mt  { color: var(--tx2); }
+.fw6   { font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div class="scroll-line" id="scrollLine"></div>
+
+<!-- ── Hero ── -->
+<div class="hero">
+  <div class="hero-eyebrow">투자 지표 가이드</div>
+  <h1>PER · PBR<br>완전 해설</h1>
+  <p class="hero-sub">주식 밸류에이션의 핵심 두 지표.<br>수치의 의미부터 종목별 적용까지.</p>
+  <div class="nav-pills">
+    <a href="#per" class="nav-pill">PER 이란</a>
+    <a href="#pbr" class="nav-pill">PBR 이란</a>
+    <a href="#when" class="nav-pill">언제 어떤 지표를</a>
+    <a href="#roe" class="nav-pill">PER·PBR·ROE 관계</a>
+    <a href="#caution" class="nav-pill">주의사항</a>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ══════════════════════════════════ PER ══════════════════════════════════ -->
+<div class="section" id="per">
+  <div class="section-badge" style="background:var(--bl2);color:var(--bl)">
+    <span>01</span><span>PER</span>
+  </div>
+  <div class="section-title">주가수익비율</div>
+  <p class="section-desc">Price to Earnings Ratio — 이 회사의 이익을 사는 데 <strong>몇 년치 값</strong>을 치르고 있는가</p>
+
+  <div class="formula-card blue">
+    <div class="formula-main">
+      PER &nbsp;=&nbsp; <span class="formula-highlight">주가</span> &nbsp;÷&nbsp; <span class="formula-highlight">주당순이익(EPS)</span>
+    </div>
+    <div class="formula-example">
+      예시: 주가 100,000원 &nbsp;/&nbsp; EPS 10,000원 &nbsp;=&nbsp; PER <strong style="color:var(--bl)">10배</strong>
+      &nbsp;→&nbsp; "이익의 10년치를 지불"
+    </div>
+  </div>
+
+  <div class="analogy">
+    <div class="analogy-title">🏪 &nbsp;치킨집 비유로 이해하기</div>
+    <div class="analogy-body">
+      연 순이익 1,000만원을 버는 치킨집을 <strong>1억원</strong>에 산다면 &rarr; PER <strong class="c-up">10배</strong><br>
+      <span class="analogy-muted">투자금 회수에 10년이 걸린다는 의미입니다.</span><br><br>
+      같은 치킨집을 <strong>5억원</strong>에 산다면 &rarr; PER <strong class="c-dn">50배</strong><br>
+      <span class="analogy-muted">"이 가게는 앞으로 훨씬 성장할 거야"라는 기대가 가격에 반영된 것.<br>
+      반대로 그 기대가 틀리면 손실이 커집니다.</span>
+    </div>
+  </div>
+
+  <!-- PER 범위 바 -->
+  <div class="range-wrap">
+    <div class="range-label-top">PER 구간별 시장 해석</div>
+    <div class="range-bar">
+      <div class="range-seg" style="flex:10;background:rgba(52,211,153,.35);color:#34d399">~10배</div>
+      <div class="range-seg" style="flex:10;background:rgba(52,211,153,.2);color:#6ee7b7">10~15배</div>
+      <div class="range-seg" style="flex:15;background:rgba(251,191,36,.2);color:#fbbf24">15~25배</div>
+      <div class="range-seg" style="flex:15;background:rgba(248,113,113,.25);color:#f87171">25~40배</div>
+      <div class="range-seg" style="flex:10;background:rgba(220,38,38,.3);color:#fc8181">40배+</div>
+    </div>
+    <div class="range-labels">
+      <span class="c-up">매우 저평가</span>
+      <span class="c-up">저평가</span>
+      <span class="c-am">적정</span>
+      <span class="c-dn">고평가</span>
+      <span style="color:#fc8181">버블 경계</span>
+    </div>
+  </div>
+
+  <!-- PER 종목 테이블 -->
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>종목</th>
+          <th>선행 PER</th>
+          <th>판단</th>
+          <th>특이사항</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><div class="td-ticker">SK하이닉스</div><div class="td-muted">000660.KS</div></td>
+          <td><span class="td-val c-up">6.79배</span></td>
+          <td><span class="badge b-vlo">매우 저평가</span></td>
+          <td class="td-note">실적이 폭발적으로 늘어 PER이 낮아진 것. 주가가 싼 게 아니라 이익이 커진 것.</td>
+        </tr>
+        <tr>
+          <td><div class="td-ticker">삼성전자</div><div class="td-muted">005930.KS</div></td>
+          <td><span class="td-val c-up">6.77배</span></td>
+          <td><span class="badge b-vlo">매우 저평가</span></td>
+          <td class="td-note">DRAM 3사 중 가장 낮음. DS 부문 이익 급증 반영.</td>
+        </tr>
+        <tr>
+          <td><div class="td-ticker">Micron</div><div class="td-muted">MU</div></td>
+          <td><span class="td-val c-up">~8배</span></td>
+          <td><span class="badge b-lo">저평가</span></td>
+          <td class="td-note">52주 10배 급등했는데도 PER이 낮은 이유 = 이익이 그 이상으로 급증.</td>
+        </tr>
+        <tr>
+          <td><div class="td-ticker">TSMC</div><div class="td-muted">TSM</div></td>
+          <td><span class="td-val c-up">~18배</span></td>
+          <td><span class="badge b-lo">저평가</span></td>
+          <td class="td-note">파운드리 독점 프리미엄 포함. 경쟁자 없는 구조.</td>
+        </tr>
+        <tr>
+          <td><div class="td-ticker">NVIDIA</div><div class="td-muted">NVDA</div></td>
+          <td><span class="td-val c-am">~28배</span></td>
+          <td><span class="badge b-mi">적정~고평가</span></td>
+          <td class="td-note">AI 독점 프리미엄 포함. 성장 기대가 가격에 반영됨.</td>
+        </tr>
+        <tr>
+          <td><div class="td-ticker">Broadcom</div><div class="td-muted">AVGO</div></td>
+          <td><span class="td-val c-am">~28배</span></td>
+          <td><span class="badge b-mi">적정~고평가</span></td>
+          <td class="td-note">VMware 통합 후 소프트웨어 구독 수익 추가로 이익 구조 개선 중.</td>
+        </tr>
+        <tr>
+          <td><div class="td-ticker">Vertiv</div><div class="td-muted">VRT</div></td>
+          <td><span class="td-val c-dn">~55배</span></td>
+          <td><span class="badge b-hi">고평가</span></td>
+          <td class="td-note">AI 냉각 수요 기대가 주가에 선반영. 실적 대비 주가 부담.</td>
+        </tr>
+        <tr>
+          <td><div class="td-ticker">Equinix</div><div class="td-muted">EQIX</div></td>
+          <td><span class="td-val c-dn">~80배</span></td>
+          <td><span class="badge b-vhi">버블 경계</span></td>
+          <td class="td-note">리츠는 PER보다 FFO로 봐야 정확. 감가상각 왜곡 심함.</td>
+        </tr>
+        <tr>
+          <td><div class="td-ticker">한미반도체</div><div class="td-muted">042700.KS</div></td>
+          <td><span class="td-val c-mt">N/A</span></td>
+          <td><span class="badge b-na">의미없음</span></td>
+          <td class="td-note">어닝쇼크로 EPS ≈ 0. 이 경우엔 PBR로 판단해야 함.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ══════════════════════════════════ PBR ══════════════════════════════════ -->
+<div class="section" id="pbr">
+  <div class="section-badge" style="background:var(--up2);color:var(--up)">
+    <span>02</span><span>PBR</span>
+  </div>
+  <div class="section-title">주가순자산비율</div>
+  <p class="section-desc">Price to Book-value Ratio — 회사를 지금 당장 청산하면 받을 금액 대비 <strong>주가가 몇 배인가</strong></p>
+
+  <div class="formula-card green">
+    <div class="formula-main">
+      PBR &nbsp;=&nbsp; <span class="formula-highlight green">주가</span> &nbsp;÷&nbsp; <span class="formula-highlight green">주당순자산(BPS)</span>
+    </div>
+    <div class="formula-example">
+      예시: 주가 100,000원 &nbsp;/&nbsp; BPS 50,000원 &nbsp;=&nbsp; PBR <strong style="color:var(--up)">2배</strong>
+      &nbsp;→&nbsp; "장부가의 2배를 지불"
+    </div>
+  </div>
+
+  <div class="analogy">
+    <div class="analogy-title">🏠 &nbsp;부동산 비유로 이해하기</div>
+    <div class="analogy-body">
+      자산 합계(건물·토지·현금 등)가 <strong>100억</strong>인 회사를<br><br>
+      <strong>200억</strong>에 산다면 &rarr; PBR <strong class="c-am">2배</strong>
+      <span class="analogy-muted"> — "브랜드·기술력 등 무형 가치를 100억 더 쳐줬다"</span><br><br>
+      <strong>50억</strong>에 살 수 있다면 &rarr; PBR <strong class="c-up">0.5배</strong>
+      <span class="analogy-muted"> — "자산도 다 못 받는 헐값 = 시장이 망할 것 같다고 봄"</span><br><br>
+      <strong style="color:var(--bl)">PBR 1배 = 자산가치와 주가가 딱 같음 = 이론적 바닥</strong>
+    </div>
+  </div>
+
+  <!-- PBR 범위 바 -->
+  <div class="range-wrap">
+    <div class="range-label-top">PBR 구간별 시장 해석</div>
+    <div class="range-bar">
+      <div class="range-seg" style="flex:8;background:rgba(52,211,153,.4);color:#34d399">~1배</div>
+      <div class="range-seg" style="flex:10;background:rgba(52,211,153,.2);color:#6ee7b7">1~2배</div>
+      <div class="range-seg" style="flex:12;background:rgba(251,191,36,.2);color:#fbbf24">2~4배</div>
+      <div class="range-seg" style="flex:15;background:rgba(248,113,113,.25);color:#f87171">4~8배</div>
+      <div class="range-seg" style="flex:15;background:rgba(220,38,38,.3);color:#fc8181">8배+</div>
+    </div>
+    <div class="range-labels">
+      <span class="c-up">역사적 바닥</span>
+      <span class="c-up">저평가</span>
+      <span class="c-am">적정</span>
+      <span class="c-dn">고평가</span>
+      <span style="color:#fc8181">기대 과도</span>
+    </div>
+  </div>
+
+  <!-- 업종별 PBR 기준 -->
+  <div class="cmp-grid">
+    <div class="cmp-card">
+      <div class="cmp-card-title" style="color:var(--up)">PBR이 낮아도 되는 업종</div>
+      <div class="cmp-card-body">
+        반도체 · 금융 · 철강 · 조선
+      </div>
+      <div class="cmp-card-sub">자산 비중 크고 이익 변동 심함.<br>PBR 1~2배도 충분히 매력적.</div>
+    </div>
+    <div class="cmp-card">
+      <div class="cmp-card-title" style="color:var(--bl)">PBR이 높아도 되는 업종</div>
+      <div class="cmp-card-body">
+        소프트웨어 · 플랫폼 · 바이오
+      </div>
+      <div class="cmp-card-sub">물리적 자산이 없어도 이익 창출.<br>PBR 10배+도 정당화 가능.</div>
+    </div>
+  </div>
+
+  <!-- PBR 종목 테이블 -->
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>종목</th>
+          <th>PBR (추정)</th>
+          <th>판단</th>
+          <th>특이사항</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><div class="td-ticker">삼성전자</div><div class="td-muted">005930.KS</div></td>
+          <td><span class="td-val c-up">~1.6배</span></td>
+          <td><span class="badge b-lo">저평가</span></td>
+          <td class="td-note">역사적으로 PBR 1배 근처가 매수 신호였음. 지금도 낮은 편.</td>
+        </tr>
+        <tr>
+          <td><div class="td-ticker">SK하이닉스</div><div class="td-muted">000660.KS</div></td>
+          <td><span class="td-val c-am">~3.5배</span></td>
+          <td><span class="badge b-mi">적정</span></td>
+          <td class="td-note">HBM 기술력 프리미엄 포함. 과거 반도체 슈퍼사이클 대비 정상 수준.</td>
+        </tr>
+        <tr>
+          <td><div class="td-ticker">TSMC</div><div class="td-muted">TSM</div></td>
+          <td><span class="td-val c-am">~6배</span></td>
+          <td><span class="badge b-mi">적정~고평가</span></td>
+          <td class="td-note">파운드리 독점 기술력에 대한 프리미엄. 대체 불가 지위 반영.</td>
+        </tr>
+        <tr>
+          <td><div class="td-ticker">한미반도체</div><div class="td-muted">042700.KS</div></td>
+          <td><span class="td-val c-dn">~7배</span></td>
+          <td><span class="badge b-hi">고평가</span></td>
+          <td class="td-note">어닝쇼크에도 자산 대비 주가가 여전히 높음. 순자산 기준 부담.</td>
+        </tr>
+        <tr>
+          <td><div class="td-ticker">NVIDIA</div><div class="td-muted">NVDA</div></td>
+          <td><span class="td-val c-dn">~35배</span></td>
+          <td><span class="badge b-vhi">기대 과도</span></td>
+          <td class="td-note">물리적 자산보다 소프트웨어 생태계·CUDA 가치가 핵심. 반도체 기준 적용 오류 주의.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ══════════════════════════════════ 언제 어떤 지표를 ══════════════════════════════════ -->
+<div class="section" id="when">
+  <div class="section-badge" style="background:var(--am2);color:var(--am)">
+    <span>03</span><span>언제 어떤 지표를</span>
+  </div>
+  <div class="section-title">상황에 따라<br>더 신뢰할 지표가 다릅니다</div>
+  <p class="section-desc">PER과 PBR을 무조건 같이 보는 것보다, 종목 특성에 맞는 지표를 선택하는 것이 중요합니다.</p>
+
+  <div class="use-table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>상황</th>
+          <th>권장 지표</th>
+          <th>이유</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="font-size:13px">이익이 안정적인 성숙 기업</td>
+          <td><span class="badge b-lo" style="background:var(--bl2);color:var(--bl)">PER</span></td>
+          <td class="td-note">이익 예측이 가능 → PER 신뢰도 높음</td>
+        </tr>
+        <tr>
+          <td style="font-size:13px">이익 변동이 극심한 반도체·조선</td>
+          <td><span class="badge b-lo">PBR</span></td>
+          <td class="td-note">이익이 0이거나 적자일 때 PER은 무의미. 자산 기반 판단이 안정적</td>
+        </tr>
+        <tr>
+          <td style="font-size:13px">적자 또는 어닝쇼크 기업 (한미반도체)</td>
+          <td><span class="badge b-lo">PBR</span></td>
+          <td class="td-note">PER 계산 자체가 불가능. 순자산 대비 가치로 판단</td>
+        </tr>
+        <tr>
+          <td style="font-size:13px">소프트웨어·플랫폼 (NVIDIA·Google)</td>
+          <td><span class="badge" style="background:var(--bl2);color:var(--bl)">선행 PER</span></td>
+          <td class="td-note">자산은 적지만 이익 창출력이 핵심. 현재보다 1~2년 후 예상 이익 기준으로</td>
+        </tr>
+        <tr>
+          <td style="font-size:13px">리츠 (Equinix)</td>
+          <td><span class="badge b-mi">FFO/P</span></td>
+          <td class="td-note">감가상각 왜곡으로 PER·PBR 모두 부정확. 현금흐름 기준(FFO) 사용</td>
+        </tr>
+        <tr>
+          <td style="font-size:13px">부채 많은 기업 (Vertiv)</td>
+          <td><span class="badge b-mi">EV/EBITDA</span></td>
+          <td class="td-note">부채 포함 기업 전체 가치로 비교해야 공정한 평가 가능</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ══════════════════════════════════ PER·PBR·ROE 관계 ══════════════════════════════════ -->
+<div class="section" id="roe">
+  <div class="section-badge" style="background:rgba(167,139,250,.12);color:var(--pu)">
+    <span>04</span><span>PER · PBR · ROE 관계</span>
+  </div>
+  <div class="section-title">세 지표는 연결되어 있습니다</div>
+  <p class="section-desc">PBR과 PER 사이에는 수학적 관계가 있어, 두 지표를 같이 보면 기업의 자본 효율성이 보입니다.</p>
+
+  <div class="roe-box">
+    <div class="roe-formula">
+      PBR &nbsp;=&nbsp; <span style="color:var(--bl)">PER</span> &nbsp;×&nbsp; <span style="color:var(--up)">ROE</span>
+    </div>
+    <div style="font-size:13px;color:var(--tx2);margin-bottom:16px">
+      ROE(자기자본이익률) = 자산 대비 이익을 얼마나 잘 내는가의 지표
+    </div>
+
+    <div class="roe-cards">
+      <div class="roe-card">
+        <div class="roe-card-label">SK하이닉스</div>
+        <div class="roe-card-val c-up">PBR 3.5배</div>
+        <div class="roe-card-desc">PER 6.79 × ROE ~51%<br>
+        자산 대비 이익 효율이 매우 높아<br>PBR이 높은 것 = 정당한 프리미엄</div>
+      </div>
+      <div class="roe-card">
+        <div class="roe-card-label">삼성전자</div>
+        <div class="roe-card-val c-am">PBR 1.6배</div>
+        <div class="roe-card-desc">PER 6.77 × ROE ~24%<br>
+        PER은 비슷하지만 ROE가 낮아<br>PBR도 낮음 = 자산 활용 효율 차이</div>
+      </div>
+    </div>
+
+    <div style="margin-top:16px;font-size:12px;color:var(--tx2);line-height:1.7;text-align:left;background:rgba(255,255,255,.03);border-radius:8px;padding:12px 16px;">
+      <strong style="color:var(--tx)">결론:</strong> 삼성과 하이닉스의 PER은 거의 같은데 PBR이 다른 이유는 <strong style="color:var(--up)">ROE 차이</strong>입니다.
+      하이닉스가 자본을 훨씬 효율적으로 써서 이익을 내기 때문에 시장이 더 높은 프리미엄을 부여합니다.
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ══════════════════════════════════ 주의사항 ══════════════════════════════════ -->
+<div class="section" id="caution">
+  <div class="section-badge" style="background:var(--dn2);color:var(--dn)">
+    <span>05</span><span>주의사항</span>
+  </div>
+  <div class="section-title">이것만 보면<br>반드시 실수합니다</div>
+
+  <div class="note-box warn">
+    <div class="note-title">⚠️ &nbsp;PER·PBR만 보면 생기는 오류</div>
+    <div class="note-li">
+      <div class="note-dot" style="background:var(--dn)"></div>
+      <p><strong>낮다고 무조건 싸지 않습니다.</strong> 이익이 앞으로 계속 줄어들 기업이라면 PER 5배도 비쌀 수 있습니다. 이익 감소 → 실질 PER은 더 높아집니다.</p>
+    </div>
+    <div class="note-li">
+      <div class="note-dot" style="background:var(--dn)"></div>
+      <p><strong>높다고 무조건 비싸지 않습니다.</strong> NVIDIA PBR 35배는 반도체 장비 기준으론 비싸지만, CUDA 소프트웨어 생태계 가치를 포함하면 다른 기준이 적용됩니다.</p>
+    </div>
+    <div class="note-li">
+      <div class="note-dot" style="background:var(--am)"></div>
+      <p><strong>업종 비교가 필수입니다.</strong> 반도체 PER 7배와 소프트웨어 PER 7배는 완전히 다른 의미입니다. 같은 업종 내 상대 비교를 해야 합니다.</p>
+    </div>
+    <div class="note-li">
+      <div class="note-dot" style="background:var(--am)"></div>
+      <p><strong>현재가 아닌 '선행' 지표로 봐야 합니다.</strong> 지금 실적 기준 PER보다 1~2년 후 예상 이익 기준 선행 PER이 투자 판단에 훨씬 유용합니다.</p>
+    </div>
+  </div>
+
+  <div class="note-box tip">
+    <div class="note-title">✅ &nbsp;올바른 사용법</div>
+    <div class="note-li">
+      <div class="note-dot" style="background:var(--up)"></div>
+      <p><strong>같은 업종 내 상대 비교</strong> — 삼성 vs 하이닉스 vs Micron 같은 방식</p>
+    </div>
+    <div class="note-li">
+      <div class="note-dot" style="background:var(--up)"></div>
+      <p><strong>해당 종목의 역사적 밴드와 비교</strong> — "지금 PER이 과거 10년 중 어느 위치에 있나"</p>
+    </div>
+    <div class="note-li">
+      <div class="note-dot" style="background:var(--up)"></div>
+      <p><strong>절대 수치보다 상대 위치가 중요합니다</strong> — PER 15배가 싼지 비싼지는 업종과 성장률에 따라 달라집니다.</p>
+    </div>
+    <div class="note-li">
+      <div class="note-dot" style="background:var(--up)"></div>
+      <p><strong>PER + PBR + ROE를 함께 보는 것</strong> — 세 지표를 같이 보면 기업의 수익성·안정성·효율성을 입체적으로 파악할 수 있습니다.</p>
+    </div>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<div class="footer">
+  <p>본 자료는 투자 교육 목적이며 투자 권유가 아닙니다.</p>
+  <p style="margin-top:6px;font-size:11px">모든 수치는 2026년 5월 기준 추정치이며 실제 투자 결정은 본인 책임 하에 수행하시기 바랍니다.</p>
+</div>
+
+<script>
+// 스크롤 진행 바
+const line = document.getElementById('scrollLine');
+window.addEventListener('scroll', () => {
+  const pct = window.scrollY / (document.body.scrollHeight - window.innerHeight) * 100;
+  line.style.width = Math.min(pct, 100) + '%';
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>용어 사전 — AI 수혜 종목 트래커</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --surface2: #242736;
+    --border: rgba(255,255,255,.08); --border2: rgba(255,255,255,.14);
+    --text: #e8eaf0; --muted: #8b8fa8; --accent: #5b8def;
+    --t1: #5b8def; --t2: #f0a842; --t3: #e05a5a;
+    --radius: 10px;
+  }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, 'Segoe UI', sans-serif; font-size: 14px; line-height: 1.6; height: 100vh; display: flex; flex-direction: column; }
+
+  /* ─ Header ─ */
+  .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 56px; flex-shrink: 0; }
+  .logo { font-size: 16px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 8px; }
+  .logo-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+  .nav-links { display: flex; gap: 6px; }
+  .nav-links a { color: var(--muted); text-decoration: none; padding: 6px 12px; border-radius: 6px; font-size: 13px; transition: all .15s; }
+  .nav-links a:hover, .nav-links a.active { color: var(--text); background: var(--surface2); }
+
+  /* ─ Layout ─ */
+  .workspace { display: flex; flex: 1; overflow: hidden; }
+
+  /* ─ Sidebar ─ */
+  .sidebar { width: 230px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+  .sidebar-top { padding: 14px 14px 10px; border-bottom: 1px solid var(--border); }
+  .sidebar-title { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 10px; }
+  .search-wrap { position: relative; }
+  .search-wrap svg { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); opacity: .4; pointer-events: none; }
+  .toc-search { width: 100%; padding: 6px 10px 6px 30px; border-radius: 7px; border: 1px solid var(--border2); background: var(--surface2); color: var(--text); font-size: 12px; outline: none; }
+  .toc-search:focus { border-color: var(--accent); }
+  .toc-search::placeholder { color: var(--muted); }
+  .toc-list { flex: 1; overflow-y: auto; padding: 8px 0 16px; }
+  .toc-cat { font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; padding: 10px 14px 4px; }
+  .toc-item { display: flex; align-items: center; gap: 8px; padding: 5px 14px; cursor: pointer; border-radius: 0; transition: background .1s; color: var(--muted); font-size: 13px; text-decoration: none; }
+  .toc-item:hover { background: var(--surface2); color: var(--text); }
+  .toc-item.active { color: var(--accent); background: rgba(91,141,239,.08); }
+  .toc-item.hidden { display: none; }
+  .toc-badge { font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 3px; margin-left: auto; flex-shrink: 0; }
+  .toc-list::-webkit-scrollbar { width: 3px; }
+  .toc-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  /* ─ Content ─ */
+  .content { flex: 1; overflow-y: auto; padding: 32px 40px; }
+  .content::-webkit-scrollbar { width: 5px; }
+  .content::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+  .content-inner { max-width: 760px; }
+
+  .page-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+  .page-sub { color: var(--muted); font-size: 13px; margin-bottom: 32px; }
+
+  .cat-section { margin-bottom: 40px; }
+  .cat-heading { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); padding-bottom: 10px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+
+  .term-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; margin-bottom: 12px; scroll-margin-top: 24px; transition: border-color .15s; }
+  .term-card:hover { border-color: var(--border2); }
+  .term-card.highlight { border-color: var(--accent); }
+  .term-card.hidden { display: none; }
+
+  .term-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+  .term-name { font-size: 17px; font-weight: 700; color: var(--text); }
+  .term-en { font-size: 12px; color: var(--muted); font-family: 'SF Mono', monospace; }
+  .term-badge { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 4px; margin-left: auto; }
+  .badge-indicator { background: rgba(91,141,239,.15); color: var(--t1); }
+  .badge-market    { background: rgba(240,168,66,.15);  color: var(--t2); }
+  .badge-tier      { background: rgba(76,175,125,.15);  color: #4caf7d; }
+  .badge-chart     { background: rgba(160,130,220,.15); color: #a78bfa; }
+  .badge-concept   { background: rgba(255,255,255,.06); color: var(--muted); }
+
+  .term-desc { color: var(--text); font-size: 14px; margin-bottom: 12px; line-height: 1.7; }
+
+  .term-formula { background: var(--surface2); border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0; padding: 10px 14px; font-family: 'SF Mono', monospace; font-size: 13px; color: var(--accent); margin-bottom: 12px; }
+
+  .term-meta { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 12px; }
+  .meta-item { font-size: 12px; }
+  .meta-label { color: var(--muted); margin-bottom: 2px; }
+  .meta-val { color: var(--text); }
+
+  .tip-box { background: rgba(91,141,239,.07); border: 1px solid rgba(91,141,239,.2); border-radius: 7px; padding: 10px 14px; font-size: 12px; color: #a0b8f0; margin-top: 10px; line-height: 1.6; }
+  .tip-box b { color: var(--accent); }
+
+  .related { margin-top: 12px; font-size: 12px; color: var(--muted); }
+  .related a { color: var(--accent); text-decoration: none; }
+  .related a:hover { text-decoration: underline; }
+
+  .no-result { text-align: center; padding: 60px 0; color: var(--muted); font-size: 13px; }
+  .no-result-icon { font-size: 32px; opacity: .3; margin-bottom: 10px; }
+
+  @media (max-width: 700px) {
+    .sidebar { display: none; }
+    .content { padding: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="logo"><div class="logo-dot"></div>AI 수혜 종목 트래커</div>
+  <nav class="nav-links">
+    <a href="/">대시보드</a>
+    <a href="/chart">멀티 차트</a>
+    <a href="/glossary" class="active">용어 사전</a>
+    <a href="/groups">그룹 관리</a>
+    <a href="/manage">종목 관리</a>
+  </nav>
+</header>
+
+<div class="workspace">
+
+  <!-- 사이드바 TOC -->
+  <aside class="sidebar">
+    <div class="sidebar-top">
+      <div class="sidebar-title">용어 사전</div>
+      <div class="search-wrap">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        <input class="toc-search" id="tocSearch" type="text" placeholder="용어 검색...">
+      </div>
+    </div>
+    <nav class="toc-list" id="tocList"></nav>
+  </aside>
+
+  <!-- 본문 -->
+  <main class="content" id="mainContent">
+    <div class="content-inner">
+      <div class="page-title">용어 사전</div>
+      <div class="page-sub">AI 수혜 종목 트래커에서 사용되는 주요 용어와 지표를 설명합니다.</div>
+      <div id="termSections"></div>
+      <div class="no-result" id="noResult" style="display:none">
+        <div class="no-result-icon">🔍</div>
+        <div>검색 결과가 없습니다.</div>
+      </div>
+    </div>
+  </main>
+
+</div>
+
+<script>
+const GLOSSARY = [
+  {
+    cat: "주가 지표",
+    terms: [
+      {
+        id: "per",
+        name: "PER",
+        en: "Price-to-Earnings Ratio · 주가수익비율",
+        badge: "indicator",
+        badgeText: "밸류에이션",
+        desc: "현재 주가가 주당순이익(EPS)의 몇 배인지를 나타내는 지표입니다. 투자자들이 기업의 수익 1원에 대해 얼마를 지불할 의향이 있는지를 보여줍니다.",
+        formula: "PER = 주가 ÷ EPS(주당순이익)",
+        meta: [
+          { label: "낮을수록", val: "상대적으로 저평가 (수익 대비 저렴)" },
+          { label: "높을수록", val: "성장 기대감이 높거나 고평가" },
+          { label: "업종 평균", val: "같은 섹터 내 비교가 중요" },
+        ],
+        tip: "<b>AI 수혜주</b>는 높은 성장 기대감으로 PER이 높은 경향이 있습니다. 절댓값보다는 동종 업계 평균과의 비교, 과거 추이가 중요합니다.",
+        related: ["pbr", "eps", "ttm"],
+        refs: [{ label: "PER · PBR 완전 가이드", url: "/knowledge/per_pbr_guide.html" }],
+      },
+      {
+        id: "pbr",
+        name: "PBR",
+        en: "Price-to-Book Ratio · 주가순자산비율",
+        badge: "indicator",
+        badgeText: "밸류에이션",
+        desc: "현재 주가를 주당순자산(BPS)으로 나눈 값으로, 기업의 장부 가치 대비 주가 수준을 나타냅니다. 자산 중심으로 기업을 평가할 때 활용합니다.",
+        formula: "PBR = 주가 ÷ BPS(주당순자산)",
+        meta: [
+          { label: "PBR < 1", val: "주가가 장부 가치보다 낮음 (청산 가치 이하)" },
+          { label: "PBR > 1", val: "성장성·수익성에 대한 프리미엄 반영" },
+        ],
+        tip: "<b>반도체·AI 인프라</b> 기업은 무형 자산(특허, 소프트웨어) 비중이 높아 장부 가치가 실제 가치를 낮게 반영하는 경우가 많습니다. PBR만으로 고평가 판단을 내리는 것은 주의가 필요합니다.",
+        related: ["per", "bps"],
+        refs: [{ label: "PER · PBR 완전 가이드", url: "/knowledge/per_pbr_guide.html" }],
+      },
+      {
+        id: "eps",
+        name: "EPS",
+        en: "Earnings Per Share · 주당순이익",
+        badge: "indicator",
+        badgeText: "수익성",
+        desc: "기업의 순이익을 발행 주식 수로 나눈 값입니다. 주주 1주당 벌어들이는 이익을 나타내며, PER 계산의 기초가 됩니다.",
+        formula: "EPS = 당기순이익 ÷ 발행 주식 수",
+        meta: [
+          { label: "TTM EPS", val: "최근 12개월(4개 분기) 합산 EPS" },
+          { label: "Diluted EPS", val: "스톡옵션 등 희석 요소 반영" },
+        ],
+        tip: "이 대시보드의 <b>PER 계산</b>은 yfinance에서 가져온 TTM(Trailing Twelve Months) EPS 또는 분기 순이익 데이터를 사용합니다.",
+        related: ["per", "ttm"],
+      },
+      {
+        id: "bps",
+        name: "BPS",
+        en: "Book Value Per Share · 주당순자산",
+        badge: "indicator",
+        badgeText: "자산",
+        desc: "기업의 자기자본(순자산)을 발행 주식 수로 나눈 값입니다. 기업이 청산될 때 주주 1주당 받을 수 있는 이론적 가치를 나타냅니다.",
+        formula: "BPS = 자기자본(Stockholders' Equity) ÷ 발행 주식 수",
+        related: ["pbr", "eps"],
+      },
+    ],
+  },
+  {
+    cat: "시장 정보",
+    terms: [
+      {
+        id: "mktcap",
+        name: "시가총액",
+        en: "Market Capitalization",
+        badge: "market",
+        badgeText: "시장",
+        desc: "현재 주가에 발행 주식 수를 곱한 값으로, 시장이 평가하는 기업의 전체 가치입니다. 기업의 규모를 비교하는 핵심 지표입니다.",
+        formula: "시가총액 = 주가 × 발행 주식 수",
+        meta: [
+          { label: "대형주(Large Cap)", val: "시총 100억 달러 이상" },
+          { label: "중형주(Mid Cap)", val: "시총 20억~100억 달러" },
+          { label: "소형주(Small Cap)", val: "시총 20억 달러 미만" },
+        ],
+      },
+      {
+        id: "52week",
+        name: "52주 고가 / 저가",
+        en: "52-Week High / Low",
+        badge: "market",
+        badgeText: "시장",
+        desc: "최근 52주(약 1년) 동안의 최고가와 최저가입니다. 현재 주가가 연간 범위에서 어느 위치에 있는지 파악하는 데 활용합니다.",
+        meta: [
+          { label: "52주 수익률", val: "현재가가 52주 저가 대비 몇 % 상승했는지" },
+        ],
+        tip: "대시보드의 <b>52주 수익률</b>은 (현재가 - 52주 저가) ÷ 52주 저가 × 100으로 계산합니다. 저가 대비 얼마나 회복·상승했는지를 보여줍니다.",
+      },
+      {
+        id: "changepct",
+        name: "등락률",
+        en: "Change Rate / Daily Return",
+        badge: "market",
+        badgeText: "시장",
+        desc: "전일 종가 대비 현재 주가의 변동 비율입니다. 양수(+)면 상승, 음수(-)면 하락을 의미합니다.",
+        formula: "등락률 = (현재가 - 전일 종가) ÷ 전일 종가 × 100",
+      },
+      {
+        id: "volume",
+        name: "거래량",
+        en: "Volume",
+        badge: "market",
+        badgeText: "시장",
+        desc: "특정 기간 동안 거래된 주식의 수량입니다. 거래량이 많을수록 시장 참여자들의 관심이 높고 가격 신뢰도가 높습니다.",
+        tip: "주가 상승 시 거래량도 함께 증가하면 <b>강한 추세 확인</b> 신호로 해석됩니다. 반대로 거래량 없는 상승은 신뢰도가 낮습니다.",
+      },
+    ],
+  },
+  {
+    cat: "수혜 분류",
+    terms: [
+      {
+        id: "tier1",
+        name: "1차 수혜주",
+        en: "Primary Beneficiary",
+        badge: "tier",
+        badgeText: "분류",
+        desc: "AI 인프라를 직접 개발·공급하는 기업입니다. GPU, 데이터센터, AI 칩 설계 등 AI 기술의 핵심 하드웨어·소프트웨어를 제공합니다.",
+        meta: [
+          { label: "대표 예시", val: "NVIDIA (GPU), TSMC (파운드리), AMD (AI 칩)" },
+          { label: "특징", val: "AI 투자 확대 시 가장 직접적이고 빠르게 수혜" },
+        ],
+        tip: "AI 수요가 증가할수록 <b>GPU·반도체 공급</b>에 직접 의존하기 때문에 가장 높은 상관관계를 보이는 경향이 있습니다.",
+        related: ["tier2", "tier3"],
+      },
+      {
+        id: "tier2",
+        name: "2차 수혜주",
+        en: "Secondary Beneficiary",
+        badge: "tier",
+        badgeText: "분류",
+        desc: "AI 인프라를 활용해 서비스를 제공하거나, 1차 수혜 기업의 부품·소재를 공급하는 기업입니다. AI를 핵심 사업에 통합하는 클라우드·소프트웨어 기업이 해당합니다.",
+        meta: [
+          { label: "대표 예시", val: "Microsoft (Azure AI), Google (Cloud AI), Amazon (AWS)" },
+          { label: "특징", val: "AI 수요 확장 시 간접적으로 수혜" },
+        ],
+        related: ["tier1", "tier3"],
+      },
+      {
+        id: "tier3",
+        name: "3차 수혜주",
+        en: "Tertiary Beneficiary",
+        badge: "tier",
+        badgeText: "분류",
+        desc: "AI 기술을 도입해 생산성을 높이거나 새로운 서비스를 창출하는 산업 전반의 기업입니다. 의료, 자동차, 금융, 콘텐츠 등 다양한 섹터가 포함됩니다.",
+        meta: [
+          { label: "특징", val: "AI 대중화 단계에서 수혜, 변동성이 상대적으로 낮음" },
+        ],
+        related: ["tier1", "tier2"],
+      },
+    ],
+  },
+  {
+    cat: "현금흐름 지표",
+    terms: [
+      {
+        id: "capex",
+        name: "CAPEX",
+        en: "Capital Expenditure · 자본적 지출 / 설비투자",
+        badge: "indicator",
+        badgeText: "현금흐름",
+        desc: "기업이 미래 수익 창출을 위해 유형 자산(공장·서버·장비 등)에 지출하는 비용입니다. 데이터센터·GPU 인프라에 대한 AI 기업들의 투자 규모를 파악하는 핵심 지표입니다.",
+        formula: "FCF = 영업현금흐름 - CAPEX",
+        meta: [
+          { label: "보고 주기", val: "분기별 현금흐름표(Cash Flow Statement)에서 확인" },
+          { label: "부호", val: "현금 유출이므로 재무제표상 음수(-) 표기" },
+          { label: "AI 관련성", val: "데이터센터·GPU 투자 = AI 인프라 확장 의지" },
+        ],
+        tip: "<b>CAPEX 증가 추이</b>는 AI 인프라 투자가 가속화되고 있다는 신호입니다. 단, CAPEX가 너무 크면 잉여현금흐름(FCF)이 줄어 단기 재무 부담이 생길 수 있습니다.",
+        related: ["fcf"],
+      },
+      {
+        id: "fcf",
+        name: "FCF",
+        en: "Free Cash Flow · 잉여현금흐름",
+        badge: "indicator",
+        badgeText: "현금흐름",
+        desc: "영업활동으로 벌어들인 현금에서 설비투자(CAPEX)를 뺀 값입니다. 배당·자사주 매입·부채 상환 등에 자유롭게 쓸 수 있는 '진짜 현금'으로, 기업의 재무 건전성을 보여줍니다.",
+        formula: "FCF = 영업현금흐름(OCF) - CAPEX",
+        meta: [
+          { label: "FCF > 0", val: "투자 후에도 현금이 남음 — 재무적으로 여유 있음" },
+          { label: "FCF < 0", val: "투자 규모가 영업 현금보다 큼 — AI 투자 급증 시 일시적으로 발생" },
+          { label: "FCF 마진", val: "FCF ÷ 매출 × 100 — 수익의 질을 평가하는 지표" },
+        ],
+        tip: "AI 인프라 투자가 집중되는 시기에는 <b>FCF가 일시적으로 마이너스</b>가 되는 경우가 많습니다. 추이를 보면서 투자 사이클이 끝난 후 FCF가 회복되는지 확인하는 것이 중요합니다.",
+        related: ["capex"],
+      },
+    ],
+  },
+  {
+    cat: "차트 · 분석 개념",
+    terms: [
+      {
+        id: "ttm",
+        name: "TTM",
+        en: "Trailing Twelve Months · 최근 12개월",
+        badge: "chart",
+        badgeText: "분석",
+        desc: "가장 최근 12개월(4개 분기)의 데이터를 합산한 수치입니다. 연간 결산 기준이 아닌 현재 시점에서의 최신 실적을 반영하기 위해 사용합니다.",
+        tip: "이 대시보드의 <b>PER 계산</b>에서 TTM EPS는 최근 4개 분기의 EPS를 더한 값을 사용합니다. 분기 보고 시점과 실제 공시 시점 사이에 차이가 있을 수 있습니다.",
+        related: ["per", "eps"],
+      },
+      {
+        id: "norm",
+        name: "정규화 (Normalized)",
+        en: "Normalization",
+        badge: "chart",
+        badgeText: "차트",
+        desc: "여러 종목을 같은 기준으로 비교하기 위해 특정 시점의 값을 0%로 맞춰 상대적 변화율로 표현하는 방법입니다. 가격대가 다른 종목들의 수익률을 동일 기준에서 비교할 수 있습니다.",
+        formula: "정규화 값 = (현재가 ÷ 기준 시점 가격 - 1) × 100 (%)",
+        tip: "차트 페이지에서 <b>단위: 정규화 (%)</b>를 선택하면 선택된 기간의 첫 날을 0%로 두고 각 종목의 수익률을 동일 선상에서 비교할 수 있습니다.",
+        related: ["changepct"],
+      },
+      {
+        id: "backfill",
+        name: "백필 (Backfill)",
+        en: "Historical Data Backfill",
+        badge: "concept",
+        badgeText: "기능",
+        desc: "과거 일정 기간의 데이터를 소급하여 데이터베이스에 채워 넣는 작업입니다. 최초 실행 시 데이터가 없는 상태에서 과거 주가 히스토리를 확보하기 위해 사용합니다.",
+        tip: "대시보드의 <b>📥 과거 데이터</b> 버튼이 이 기능입니다. yfinance에서 최대 수십 년치 일별 데이터를 가져옵니다. PER/PBR의 경우 분기 재무제표를 기반으로 소급 계산합니다.",
+      },
+      {
+        id: "equity",
+        name: "자기자본",
+        en: "Stockholders' Equity",
+        badge: "concept",
+        badgeText: "재무",
+        desc: "기업의 총 자산에서 총 부채를 뺀 순자산입니다. 주주에게 귀속되는 기업의 실질 가치이며, BPS와 PBR 계산의 기초가 됩니다.",
+        formula: "자기자본 = 총 자산 - 총 부채",
+        related: ["bps", "pbr"],
+      },
+    ],
+  },
+];
+
+// ── 빌드 ──────────────────────────────────────────────────
+const BADGE_CLASS = {
+  indicator: "badge-indicator",
+  market:    "badge-market",
+  tier:      "badge-tier",
+  chart:     "badge-chart",
+  concept:   "badge-concept",
+};
+
+function buildTOC() {
+  const nav = document.getElementById("tocList");
+  nav.innerHTML = GLOSSARY.map(cat => `
+    <div class="toc-cat" data-cat="${cat.cat}">${cat.cat}</div>
+    ${cat.terms.map(t => `
+      <a class="toc-item" data-id="${t.id}" data-cat="${cat.cat}" href="#${t.id}"
+         data-search="${(t.name + ' ' + t.en + ' ' + t.desc).toLowerCase()}">
+        ${t.name}
+        <span class="toc-badge ${BADGE_CLASS[t.badge] || ''}">${t.badgeText}</span>
+      </a>`).join("")}
+  `).join("");
+}
+
+function buildContent() {
+  const wrap = document.getElementById("termSections");
+  wrap.innerHTML = GLOSSARY.map(cat => `
+    <section class="cat-section" data-cat="${cat.cat}">
+      <div class="cat-heading">${cat.cat}</div>
+      ${cat.terms.map(t => `
+        <article class="term-card" id="${t.id}" data-cat="${cat.cat}"
+                 data-search="${(t.name + ' ' + t.en + ' ' + (t.desc||'') + ' ' + (t.tip||'')).toLowerCase()}">
+          <div class="term-head">
+            <span class="term-name">${t.name}</span>
+            <span class="term-en">${t.en}</span>
+            <span class="term-badge ${BADGE_CLASS[t.badge] || ''}">${t.badgeText}</span>
+          </div>
+          ${t.desc ? `<p class="term-desc">${t.desc}</p>` : ""}
+          ${t.formula ? `<div class="term-formula">${t.formula}</div>` : ""}
+          ${t.meta ? `<div class="term-meta">${t.meta.map(m => `
+            <div class="meta-item"><div class="meta-label">${m.label}</div><div class="meta-val">${m.val}</div></div>`).join("")}
+          </div>` : ""}
+          ${t.tip ? `<div class="tip-box">💡 ${t.tip}</div>` : ""}
+          ${t.related ? `<div class="related">관련 용어: ${t.related.map(r => {
+            const found = GLOSSARY.flatMap(c => c.terms).find(x => x.id === r);
+            return found ? `<a href="#${r}">${found.name}</a>` : r;
+          }).join(", ")}</div>` : ""}
+          ${t.refs ? `<div class="related">📄 참고 자료: ${t.refs.map(r =>
+            `<a href="${r.url}" target="_blank">${r.label}</a>`).join(", ")}</div>` : ""}
+        </article>`).join("")}
+    </section>
+  `).join("");
+}
+
+// ── 검색 ──────────────────────────────────────────────────
+document.getElementById("tocSearch").addEventListener("input", e => {
+  const q = e.target.value.toLowerCase().trim();
+  let anyVisible = false;
+
+  document.querySelectorAll(".term-card").forEach(card => {
+    const match = !q || card.dataset.search.includes(q);
+    card.classList.toggle("hidden", !match);
+    if (match) anyVisible = true;
+  });
+
+  document.querySelectorAll(".cat-section").forEach(sec => {
+    const hasVisible = [...sec.querySelectorAll(".term-card")].some(c => !c.classList.contains("hidden"));
+    sec.style.display = hasVisible ? "" : "none";
+  });
+
+  document.querySelectorAll(".toc-item").forEach(item => {
+    const match = !q || item.dataset.search.includes(q);
+    item.classList.toggle("hidden", !match);
+  });
+
+  document.querySelectorAll(".toc-cat").forEach(cat => {
+    const siblings = [...cat.nextElementSibling ? [cat] : []];
+    const catName = cat.dataset.cat;
+    const hasVisible = [...document.querySelectorAll(`.toc-item[data-cat="${catName}"]`)]
+      .some(i => !i.classList.contains("hidden"));
+    cat.style.display = hasVisible ? "" : "none";
+  });
+
+  document.getElementById("noResult").style.display = anyVisible || !q ? "none" : "block";
+});
+
+// ── 스크롤 시 TOC 활성화 ──────────────────────────────────
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      document.querySelectorAll(".toc-item").forEach(i => i.classList.remove("active"));
+      const active = document.querySelector(`.toc-item[data-id="${entry.target.id}"]`);
+      if (active) {
+        active.classList.add("active");
+        active.scrollIntoView({ block: "nearest" });
+      }
+    }
+  });
+}, { root: document.getElementById("mainContent"), threshold: 0.4 });
+
+// ── 초기화 ────────────────────────────────────────────────
+buildTOC();
+buildContent();
+document.querySelectorAll(".term-card").forEach(el => observer.observe(el));
+</script>
+</body>
+</html>

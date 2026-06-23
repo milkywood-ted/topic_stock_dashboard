@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>종목 관리 — AI 수혜 종목 트래커</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --surface2: #242736;
+    --border: rgba(255,255,255,.08); --border2: rgba(255,255,255,.14);
+    --text: #e8eaf0; --muted: #8b8fa8; --accent: #5b8def;
+    --up: #4caf7d; --dn: #e05a5a;
+    --radius: 10px; --gap: 14px;
+  }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, 'Segoe UI', sans-serif; font-size: 14px; }
+  .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 56px; position: sticky; top:0; z-index:100; }
+  .logo { font-size: 16px; font-weight: 600; color: var(--text); display:flex; align-items:center; gap:8px; }
+  .logo-dot { width:10px; height:10px; border-radius:50%; background: var(--accent); }
+  .nav-links { display:flex; gap:6px; }
+  .nav-links a { color: var(--muted); text-decoration: none; padding: 6px 12px; border-radius: 6px; font-size: 13px; transition: all .15s; }
+  .nav-links a:hover, .nav-links a.active { color: var(--text); background: var(--surface2); }
+  .main { max-width: 1100px; margin: 0 auto; padding: 24px; }
+  h2 { font-size: 15px; font-weight: 600; margin-bottom: 14px; color: var(--text); }
+
+  /* Add form */
+  .add-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 28px; }
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap: 10px; margin-bottom: 12px; }
+  .form-grid label { font-size: 11px; color: var(--muted); display: block; margin-bottom: 4px; }
+  .form-grid input, .form-grid select {
+    width: 100%; padding: 7px 10px; background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: 6px; color: var(--text); font-size: 13px; outline: none;
+  }
+  .form-grid input:focus, .form-grid select:focus { border-color: var(--accent); }
+  .add-btn { padding: 8px 20px; background: var(--accent); color:#fff; border:none; border-radius:8px; font-size:13px; cursor:pointer; }
+  .add-btn:hover { opacity:.85; }
+
+  /* Table */
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 28px; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th { font-size: 11px; font-weight: 500; color: var(--muted); padding: 10px 14px; border-bottom: 1px solid var(--border); text-align: left; background: var(--surface); text-transform: uppercase; letter-spacing: .4px; }
+  tbody tr { border-bottom: 1px solid var(--border); }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr.inactive { opacity: .45; }
+  tbody td { padding: 10px 14px; vertical-align: middle; font-size: 13px; }
+  .sym { font-family: 'SF Mono', monospace; font-weight: 600; }
+  .tier-badge { display:inline-block; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 4px; }
+  .tier-1 { background: rgba(91,141,239,.15); color: #5b8def; }
+  .tier-2 { background: rgba(240,168,66,.15); color: #f0a842; }
+  .tier-3 { background: rgba(224,90,90,.15); color: #e05a5a; }
+  .toggle-btn { padding: 4px 12px; border-radius: 6px; border: 1px solid var(--border2); background: transparent; color: var(--muted); font-size: 12px; cursor: pointer; transition: all .15s; }
+  .toggle-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+  /* Logs */
+  .log-list { display: flex; flex-direction: column; gap: 6px; }
+  .log-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
+  .log-time { color: var(--muted); font-family: 'SF Mono', monospace; }
+  .log-result { color: var(--up); font-weight: 500; }
+
+  .toast { position:fixed; bottom:24px; right:24px; background:#1e2235; border:1px solid var(--border2); border-radius:10px; padding:12px 18px; font-size:13px; opacity:0; transform:translateY(10px); transition:all .3s; pointer-events:none; z-index:999; }
+  .toast.show { opacity:1; transform:translateY(0); }
+  .toast.ok { border-color:var(--up); color:var(--up); }
+  .toast.err { border-color:var(--dn); color:var(--dn); }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="logo"><div class="logo-dot"></div>AI 수혜 종목 트래커</div>
+  <nav class="nav-links">
+    <a href="/">대시보드</a>
+    <a href="/chart">멀티 차트</a>
+    <a href="/glossary">용어 사전</a>
+    <a href="/groups">그룹 관리</a>
+    <a href="/manage" class="active">종목 관리</a>
+  </nav>
+</header>
+
+<main class="main">
+
+  <h2>종목 추가</h2>
+  <div class="add-card">
+    <div class="form-grid">
+      <div>
+        <label>티커 (예: AAPL, 005930.KS)</label>
+        <input id="fTicker" type="text" placeholder="TICKER">
+      </div>
+      <div>
+        <label>종목명</label>
+        <input id="fName" type="text" placeholder="회사명">
+      </div>
+      <div>
+        <label>수혜 구분</label>
+        <select id="fTier">
+          <option value="1차">1차 수혜</option>
+          <option value="2차">2차 수혜</option>
+          <option value="3차">3차 수혜</option>
+        </select>
+      </div>
+      <div>
+        <label>섹터</label>
+        <input id="fSector" type="text" placeholder="예: GPU·AI칩">
+      </div>
+      <div>
+        <label>시장</label>
+        <select id="fMarket">
+          <option value="US">US (미국)</option>
+          <option value="KR">KR (한국)</option>
+        </select>
+      </div>
+    </div>
+    <button class="add-btn" onclick="addStock()">+ 종목 추가</button>
+  </div>
+
+  <h2>등록 종목 ({{ stocks | length }}개)</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>티커</th>
+          <th>종목명</th>
+          <th>구분</th>
+          <th>섹터</th>
+          <th>시장</th>
+          <th>상태</th>
+          <th>관리</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in stocks %}
+        <tr class="{{ 'inactive' if not s.active else '' }}" id="row-{{ s.ticker }}">
+          <td class="sym">{{ s.ticker }}</td>
+          <td>{{ s.name }}</td>
+          <td><span class="tier-badge tier-{{ s.tier[:1] }}">{{ s.tier }} 수혜</span></td>
+          <td style="color:var(--muted);font-size:12px">{{ s.sector or "—" }}</td>
+          <td style="font-size:12px">{{ s.market }}</td>
+          <td>
+            <span class="status-dot" style="background:{{ '#4caf7d' if s.active else '#666' }}"></span>
+            {{ "활성" if s.active else "비활성" }}
+          </td>
+          <td>
+            <button class="toggle-btn" onclick="toggleStock('{{ s.ticker }}')">
+              {{ "비활성화" if s.active else "활성화" }}
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <h2>수집 이력 (최근 10회)</h2>
+  <div class="log-list">
+    {% for log in logs %}
+    <div class="log-item">
+      <span class="log-time">{{ log.collected_at.strftime('%Y-%m-%d %H:%M') }} UTC</span>
+      <span class="log-result">✓ {{ log.success }}/{{ log.total }} 성공 {% if log.failed %} · <span style="color:var(--dn)">✗ {{ log.failed }} 실패</span>{% endif %}</span>
+    </div>
+    {% else %}
+    <div class="log-item"><span style="color:var(--muted)">수집 이력 없음. 대시보드에서 "지금 수집"을 눌러주세요.</span></div>
+    {% endfor %}
+  </div>
+
+</main>
+<div class="toast" id="toast"></div>
+
+<script src="/static/js/toast.js"></script>
+<script>
+async function addStock() {
+  const body = new FormData();
+  body.append("ticker", document.getElementById("fTicker").value.trim());
+  body.append("name",   document.getElementById("fName").value.trim());
+  body.append("tier",   document.getElementById("fTier").value);
+  body.append("sector", document.getElementById("fSector").value.trim());
+  body.append("market", document.getElementById("fMarket").value);
+  if (!body.get("ticker") || !body.get("name")) { showToast("티커와 종목명을 입력하세요", "err"); return; }
+  const res  = await fetch("/manage/add", { method: "POST", body });
+  const json = await res.json();
+  showToast(`✓ ${json.ticker} 추가됨`, "ok");
+  setTimeout(() => location.reload(), 1000);
+}
+
+async function toggleStock(ticker) {
+  const res  = await fetch(`/manage/toggle/${ticker}`, { method: "POST" });
+  const json = await res.json();
+  showToast(`${ticker} → ${json.active ? "활성화" : "비활성화"}`, "ok");
+  setTimeout(() => location.reload(), 800);
+}
+</script>
+</body>
+</html>

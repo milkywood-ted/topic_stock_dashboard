@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>그룹 관리 — AI 수혜 종목 트래커</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --surface2: #242736;
+    --border: rgba(255,255,255,.08); --border2: rgba(255,255,255,.14);
+    --text: #e8eaf0; --muted: #8b8fa8; --accent: #5b8def;
+    --up: #4caf7d; --dn: #e05a5a;
+    --radius: 10px;
+  }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, 'Segoe UI', sans-serif; font-size: 14px; line-height: 1.5; }
+
+  .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 56px; position: sticky; top: 0; z-index: 100; }
+  .logo { font-size: 16px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 8px; }
+  .logo-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+  .nav-links { display: flex; gap: 6px; }
+  .nav-links a { color: var(--muted); text-decoration: none; padding: 6px 12px; border-radius: 6px; font-size: 13px; transition: all .15s; }
+  .nav-links a:hover, .nav-links a.active { color: var(--text); background: var(--surface2); }
+
+  .main { max-width: 760px; margin: 0 auto; padding: 32px 24px; }
+  .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+  .page-title { font-size: 18px; font-weight: 700; }
+  .page-sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+  /* ─ 새 그룹 만들기 ─ */
+  .create-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 24px; display: flex; gap: 10px; align-items: flex-end; }
+  .create-card input { flex: 1; padding: 8px 12px; background: var(--surface2); border: 1px solid var(--border2); border-radius: 7px; color: var(--text); font-size: 13px; outline: none; }
+  .create-card input:focus { border-color: var(--accent); }
+  .create-card input::placeholder { color: var(--muted); }
+  .create-btn { padding: 8px 18px; background: var(--accent); color: #fff; border: none; border-radius: 7px; font-size: 13px; cursor: pointer; white-space: nowrap; transition: opacity .15s; }
+  .create-btn:hover { opacity: .85; }
+
+  /* ─ 그룹 목록 ─ */
+  .group-list { display: flex; flex-direction: column; gap: 10px; }
+  .empty-state { text-align: center; padding: 60px 0; color: var(--muted); font-size: 13px; }
+  .empty-icon { font-size: 32px; opacity: .3; margin-bottom: 10px; }
+
+  /* ─ 그룹 카드 (아코디언) ─ */
+  .group-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: visible; transition: border-color .15s; }
+  .group-card.open { border-color: var(--border2); }
+
+  .group-header { display: flex; align-items: center; gap: 10px; padding: 14px 18px; cursor: pointer; user-select: none; transition: background .1s; border-radius: var(--radius); }
+  .group-card.open .group-header { border-radius: var(--radius) var(--radius) 0 0; }
+  .group-header:hover { background: var(--surface2); }
+  .group-chevron { font-size: 11px; color: var(--muted); transition: transform .2s; flex-shrink: 0; }
+  .group-card.open .group-chevron { transform: rotate(90deg); }
+  .group-name { font-size: 15px; font-weight: 600; flex: 1; }
+  .group-count { font-size: 12px; color: var(--muted); background: var(--surface2); padding: 2px 8px; border-radius: 10px; }
+  .group-del-btn { padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(224,90,90,.3); background: transparent; color: var(--dn); font-size: 12px; cursor: pointer; opacity: 0; transition: opacity .15s; }
+  .group-header:hover .group-del-btn { opacity: 1; }
+  .group-del-btn:hover { background: rgba(224,90,90,.1); }
+
+  .group-body { display: none; padding: 0 18px 16px; border-top: 1px solid var(--border); }
+  .group-card.open .group-body { display: block; }
+
+  /* ─ 구성 종목 목록 ─ */
+  .member-list { padding-top: 12px; display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+  .member-item { display: flex; align-items: center; gap: 10px; padding: 7px 10px; background: var(--surface2); border-radius: 7px; }
+  .member-name   { font-size: 13px; font-weight: 600; color: var(--text); flex: 1; }
+  .member-ticker { font-family: 'SF Mono', monospace; font-size: 11px; color: var(--muted); min-width: 52px; }
+  .member-tier { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 3px; }
+  .tier-1차 { background: rgba(91,141,239,.15); color: #5b8def; }
+  .tier-2차 { background: rgba(240,168,66,.15); color: #f0a842; }
+  .tier-3차 { background: rgba(224,90,90,.15); color: #e05a5a; }
+  .tier-그룹 { background: rgba(255,255,255,.06); color: var(--muted); }
+  .member-remove { margin-left: auto; padding: 2px 8px; border-radius: 5px; border: 1px solid var(--border2); background: transparent; color: var(--muted); font-size: 11px; cursor: pointer; transition: all .15s; flex-shrink: 0; }
+  .member-remove:hover { border-color: var(--dn); color: var(--dn); }
+  .no-members { font-size: 12px; color: var(--muted); padding: 10px 0; }
+
+  /* ─ 종목 검색·추가 ─ */
+  .add-member-area { position: relative; }
+  .add-member-input { width: 100%; padding: 8px 12px; background: var(--surface2); border: 1px solid var(--border2); border-radius: 7px; color: var(--text); font-size: 13px; outline: none; }
+  .add-member-input:focus { border-color: var(--accent); }
+  .add-member-input::placeholder { color: var(--muted); }
+  .search-dropdown { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: var(--surface); border: 1px solid var(--border2); border-radius: 8px; z-index: 50; max-height: 200px; overflow-y: auto; box-shadow: 0 8px 24px rgba(0,0,0,.4); display: none; }
+  .search-dropdown.show { display: block; }
+  .search-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; cursor: pointer; transition: background .1s; }
+  .search-item:hover { background: var(--surface2); }
+  .search-item .s-ticker { font-family: 'SF Mono', monospace; font-size: 12px; font-weight: 600; color: var(--accent); min-width: 56px; }
+  .search-item .s-name { font-size: 13px; flex: 1; }
+  .search-item .s-tier { font-size: 10px; color: var(--muted); }
+  .search-no-result { padding: 10px 12px; font-size: 12px; color: var(--muted); }
+  .fetch-area { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+  .fetch-area label { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .fetch-period { padding: 5px 8px; background: var(--surface2); border: 1px solid var(--border2); border-radius: 6px; color: var(--text); font-size: 12px; outline: none; cursor: pointer; }
+  .fetch-period:focus { border-color: var(--accent); }
+  .fetch-btn { padding: 5px 14px; background: var(--surface2); border: 1px solid var(--border2); border-radius: 6px; color: var(--text); font-size: 12px; cursor: pointer; transition: all .15s; white-space: nowrap; }
+  .fetch-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .fetch-btn:disabled { opacity: .4; cursor: default; }
+  .search-divider { padding: 6px 12px; font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; border-top: 1px solid var(--border); background: var(--surface2); }
+  .search-confirm { background: rgba(76,175,125,.06); border-top: 1px solid var(--border); }
+  .search-item { flex-wrap: wrap; }
+  .s-name { font-size: 13px; font-weight: 500; flex: 1; min-width: 0; }
+  .s-ticker { font-family: 'SF Mono', monospace; font-size: 11px; color: var(--muted); flex-shrink: 0; }
+  .search-dropdown::-webkit-scrollbar { width: 4px; }
+  .search-dropdown::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  .toast { position: fixed; bottom: 24px; right: 24px; background: #1e2235; border: 1px solid var(--border2); border-radius: 10px; padding: 12px 18px; font-size: 13px; opacity: 0; transform: translateY(10px); transition: all .3s; pointer-events: none; z-index: 999; }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.ok  { border-color: var(--up);  color: var(--up); }
+  .toast.err { border-color: var(--dn);  color: var(--dn); }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="logo"><div class="logo-dot"></div>AI 수혜 종목 트래커</div>
+  <nav class="nav-links">
+    <a href="/">대시보드</a>
+    <a href="/chart">멀티 차트</a>
+    <a href="/glossary">용어 사전</a>
+    <a href="/groups" class="active">그룹 관리</a>
+    <a href="/manage">종목 관리</a>
+  </nav>
+</header>
+
+<main class="main">
+  <div class="page-header">
+    <div>
+      <div class="page-title">그룹 관리</div>
+      <div class="page-sub">나만의 종목 그룹을 만들고 관리합니다</div>
+    </div>
+    <button id="fillAllMetricsBtn" onclick="fillAllGroupMetrics()"
+            style="padding:7px 14px;background:var(--surface2);border:1px solid var(--border2);border-radius:7px;color:var(--muted);font-size:12px;cursor:pointer;transition:all .15s"
+            title="전체 그룹 종목의 PER/PBR/CAPEX/FCF 소급 계산">
+      📊 전체 그룹 지표 소급
+    </button>
+    <button id="fixNamesBtn" onclick="fixKrNames()"
+            style="padding:7px 14px;background:var(--surface2);border:1px solid var(--border2);border-radius:7px;color:var(--muted);font-size:12px;cursor:pointer;transition:all .15s"
+            title="한국 종목(*.KS, *.KQ)의 이름을 네이버 한국어로 일괄 수정">
+      🇰🇷 한국어 이름 정리
+    </button>
+  </div>
+
+  <!-- 새 그룹 만들기 -->
+  <div class="create-card">
+    <input type="text" id="newGroupName" placeholder="새 그룹 이름 입력..." maxlength="30"
+           onkeydown="if(event.key==='Enter') createGroup()">
+    <button class="create-btn" onclick="createGroup()">+ 그룹 만들기</button>
+  </div>
+
+  <!-- 그룹 목록 -->
+  <div class="group-list" id="groupList"></div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script src="/static/js/toast.js"></script>
+<script>
+const ALL_STOCKS = {{ stocks_json | safe }};
+let groups = [];
+
+// ── 데이터 로드 ───────────────────────────────────────────
+async function loadGroups() {
+  const res = await fetch("/api/groups");
+  groups = await res.json();
+  renderGroups();
+}
+
+// ── 렌더 ─────────────────────────────────────────────────
+function renderGroups() {
+  const listEl = document.getElementById("groupList");
+  if (!groups.length) {
+    listEl.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">📂</div>
+      <div>아직 그룹이 없습니다.<br>위에서 새 그룹을 만들어보세요.</div>
+    </div>`;
+    return;
+  }
+
+  listEl.innerHTML = groups.map(g => `
+    <div class="group-card" id="gc_${g.id}">
+      <div class="group-header" onclick="toggleGroup(${g.id})">
+        <span class="group-chevron">▶</span>
+        <span class="group-name">${escHtml(g.name)}</span>
+        <span class="group-count">${g.members.length}개</span>
+        <button class="group-del-btn" onclick="deleteGroup(event, ${g.id})">삭제</button>
+      </div>
+      <div class="group-body">
+        <div class="member-list" id="ml_${g.id}">
+          ${renderMembers(g)}
+        </div>
+        <div class="add-member-area" id="ama_${g.id}">
+          <input class="add-member-input" type="text" placeholder="종목 티커·이름 검색..."
+                 oninput="onSearch(${g.id}, this.value)"
+                 onfocus="onSearch(${g.id}, this.value)"
+                 onblur="setTimeout(()=>hideDropdown(${g.id}), 150)">
+          <div class="search-dropdown" id="sd_${g.id}"></div>
+        </div>
+        <div class="fetch-area">
+          <label>과거 데이터</label>
+          <select class="fetch-period" id="fp_${g.id}">
+            <option value="6mo">6개월</option>
+            <option value="1y" selected>1년</option>
+            <option value="2y">2년</option>
+            <option value="5y">5년</option>
+            <option value="max">전체</option>
+          </select>
+          <button class="fetch-btn" id="fb_${g.id}" onclick="fetchGroupData(${g.id})">
+            📥 데이터 가져오기
+          </button>
+          <button class="fetch-btn" id="fm_${g.id}" onclick="fillGroupMetrics(${g.id})"
+                  title="PER/PBR/CAPEX/FCF 소급">
+            📊 지표 소급
+          </button>
+        </div>
+      </div>
+    </div>
+  `).join("");
+}
+
+function renderMembers(g) {
+  if (!g.members.length)
+    return `<div class="no-members">종목을 검색해서 추가해보세요.</div>`;
+  const metaMap = Object.fromEntries(ALL_STOCKS.map(s => [s.ticker, s]));
+  return g.members.map(m => {
+    const meta = metaMap[m.ticker] || {};
+    const tierCls = meta.tier ? `tier-${meta.tier}` : "";
+    return `<div class="member-item" id="mi_${g.id}_${m.ticker}">
+      <span class="member-name">${escHtml(m.name)}</span>
+      <span class="member-ticker">${m.ticker}</span>
+      ${meta.tier ? `<span class="member-tier ${tierCls}">${meta.tier === '그룹' ? escHtml(g.name) : meta.tier + ' 수혜'}</span>` : ""}
+      <button class="member-remove" onclick="removeMember(${g.id}, '${m.ticker}')">✕</button>
+    </div>`;
+  }).join("");
+}
+
+// ── 아코디언 토글 ─────────────────────────────────────────
+function toggleGroup(id) {
+  const card = document.getElementById(`gc_${id}`);
+  card.classList.toggle("open");
+}
+
+// ── 그룹 생성 ─────────────────────────────────────────────
+async function createGroup() {
+  const input = document.getElementById("newGroupName");
+  const name = input.value.trim();
+  if (!name) return;
+
+  const form = new FormData();
+  form.append("name", name);
+
+  const res = await fetch("/api/groups", { method: "POST", body: form });
+  if (!res.ok) {
+    const err = await res.json();
+    showToast(err.detail || "생성 실패", "err"); return;
+  }
+  input.value = "";
+  await loadGroups();
+  showToast(`✓ "${name}" 그룹이 생성됐습니다`, "ok");
+
+  // 생성된 그룹 자동으로 열기
+  const newGroup = groups.find(g => g.name === name);
+  if (newGroup) setTimeout(() => {
+    document.getElementById(`gc_${newGroup.id}`)?.classList.add("open");
+  }, 50);
+}
+
+// ── 그룹 삭제 ─────────────────────────────────────────────
+async function deleteGroup(e, id) {
+  e.stopPropagation();
+  const g = groups.find(x => x.id === id);
+  if (!confirm(`"${g?.name}" 그룹을 삭제하시겠습니까?\n구성 종목도 모두 제거됩니다.`)) return;
+  await fetch(`/api/groups/${id}`, { method: "DELETE" });
+  await loadGroups();
+  showToast("그룹이 삭제됐습니다", "ok");
+}
+
+// ── 종목 검색 ─────────────────────────────────────────────
+const searchTimers = {};
+
+function onSearch(groupId, q) {
+  const g = groups.find(x => x.id === groupId);
+  const existingTickers = new Set(g ? g.members.map(m => m.ticker) : []);
+  const query = q.trim();
+  const dd = document.getElementById(`sd_${groupId}`);
+
+  // 로컬 매칭
+  const localMatches = ALL_STOCKS.filter(s =>
+    !existingTickers.has(s.ticker) &&
+    (!query || s.ticker.toLowerCase().includes(query.toLowerCase())
+             || s.name.toLowerCase().includes(query.toLowerCase()))
+  ).slice(0, 6);
+
+  renderDropdown(groupId, localMatches, existingTickers, query, false);
+
+  // 디바운스 야후 검색
+  clearTimeout(searchTimers[groupId]);
+  if (query.length >= 2) {
+    renderDropdown(groupId, localMatches, existingTickers, query, true);
+    searchTimers[groupId] = setTimeout(() => remoteSearch(groupId, query, existingTickers), 400);
+  }
+}
+
+function renderDropdown(groupId, localMatches, existingTickers, query, loading) {
+  const dd = document.getElementById(`sd_${groupId}`);
+  let html = localMatches.map(s => stockItem(groupId, s)).join("");
+
+  if (loading && query) {
+    html += `<div class="search-divider">Yahoo Finance 검색 중...</div>`;
+  }
+  if (!html && !loading) {
+    html = `<div class="search-no-result">${query ? "검색 결과 없음" : "종목명 또는 티커를 입력하세요"}</div>`;
+  }
+  dd.innerHTML = html;
+  dd.classList.add("show");
+}
+
+async function remoteSearch(groupId, query, existingTickers) {
+  const dd = document.getElementById(`sd_${groupId}`);
+  try {
+    const res = await fetch(`/api/search-ticker?q=${encodeURIComponent(query)}`);
+    const remote = await res.json();
+
+    const localTickers = new Set(ALL_STOCKS.map(s => s.ticker));
+    const newRemote = remote.filter(r =>
+      !existingTickers.has(r.ticker) && !localTickers.has(r.ticker)
+    );
+
+    const localMatches = ALL_STOCKS.filter(s =>
+      !existingTickers.has(s.ticker) &&
+      (s.ticker.toLowerCase().includes(query.toLowerCase()) ||
+       s.name.toLowerCase().includes(query.toLowerCase()))
+    ).slice(0, 6);
+
+    let html = localMatches.map(s => stockItem(groupId, s)).join("");
+
+    if (newRemote.length) {
+      html += `<div class="search-divider">Yahoo Finance 검색 결과</div>`;
+      html += newRemote.map(r => `
+        <div class="search-item" onmousedown="addMember(${groupId}, '${r.ticker}', '${escHtml(r.name)}', '${r.market}')">
+          <span class="s-name"><b>${escHtml(r.name)}</b></span>
+          <span class="s-ticker">${r.ticker}</span>
+          <span class="s-tier" style="color:var(--muted)">${r.type || ''}</span>
+        </div>`).join("");
+    } else if (!localMatches.length) {
+      html = `<div class="search-no-result">검색 결과 없음</div>`;
+    }
+
+    dd.innerHTML = html;
+    dd.classList.add("show");
+  } catch(e) {
+    // 검색 실패 시 로컬 결과만 유지
+  }
+}
+
+function stockItem(groupId, s) {
+  return `<div class="search-item" onmousedown="addMember(${groupId}, '${s.ticker}', '${escHtml(s.name)}', '${s.market || 'US'}')">
+    <span class="s-name">${escHtml(s.name)}</span>
+    <span class="s-ticker">${s.ticker}</span>
+    <span class="s-tier">${s.tier === '그룹' ? '그룹' : s.tier + ' 수혜'}</span>
+  </div>`;
+}
+
+function hideDropdown(groupId) {
+  clearTimeout(searchTimers[groupId]);
+  document.getElementById(`sd_${groupId}`)?.classList.remove("show");
+}
+
+// ── 기존 종목 추가 ────────────────────────────────────────
+async function addMember(groupId, ticker, name, market) {
+  // 드롭다운 즉시 닫고 로딩 알림 (타이밍 이슈 방지)
+  hideDropdown(groupId);
+  const input = document.querySelector(`#ama_${groupId} input`);
+  if (input) input.value = "";
+
+  const isNew = !ALL_STOCKS.some(s => s.ticker === ticker);
+  if (isNew) showToast(`${name || ticker} 데이터 수집 중...`, "ok");
+
+  const form = new FormData();
+  form.append("ticker", ticker);
+  form.append("name", name || "");
+  form.append("market", market || "US");
+
+  try {
+    const res  = await fetch(`/api/groups/${groupId}/members`, { method: "POST", body: form });
+    const json = await res.json();
+    await loadGroups();
+    setTimeout(() => document.getElementById(`gc_${groupId}`)?.classList.add("open"), 30);
+    const msg = isNew && json.inserted > 0
+      ? `✓ ${name || ticker} 추가됨 (${json.inserted}개 데이터 수집)`
+      : `✓ ${name || ticker} 추가됨`;
+    showToast(msg, "ok");
+  } catch(e) {
+    showToast("추가 실패: " + e.message, "err");
+  }
+}
+
+// ── 새 외부 종목 조회 후 추가 ────────────────────────────
+async function lookupAndAdd(groupId, ticker) {
+  const dd = document.getElementById(`sd_${groupId}`);
+  dd.innerHTML = `<div class="search-no-result">🔍 ${ticker} 조회 중...</div>`;
+
+  try {
+    const res = await fetch(`/api/ticker-info/${ticker}`);
+    if (!res.ok) { showToast(`${ticker}: 종목을 찾을 수 없습니다`, "err"); return; }
+    const info = await res.json();
+
+    // 확인 아이템으로 교체
+    dd.innerHTML = `<div class="search-item search-confirm"
+        onmousedown="addMember(${groupId}, '${info.ticker}', '${escHtml(info.name)}', '${info.market}')">
+      <span class="s-ticker" style="color:var(--up)">✓</span>
+      <span class="s-name"><b>${escHtml(info.name)}</b> (${info.ticker}) — 클릭하여 추가 (1년치 데이터 수집)</span>
+    </div>`;
+    dd.classList.add("show");
+  } catch(e) {
+    showToast("조회 실패: " + e.message, "err");
+  }
+}
+
+// ── 종목 제거 ─────────────────────────────────────────────
+async function removeMember(groupId, ticker) {
+  await fetch(`/api/groups/${groupId}/members/${ticker}`, { method: "DELETE" });
+  await loadGroups();
+  setTimeout(() => document.getElementById(`gc_${groupId}`)?.classList.add("open"), 30);
+  showToast(`${ticker} 제거됨`, "ok");
+}
+
+// ── 그룹 지표 소급 ───────────────────────────────────────
+async function fillGroupMetrics(groupId) {
+  const btn = document.getElementById(`fm_${groupId}`);
+  btn.disabled = true; btn.textContent = "계산 중...";
+  try {
+    const res  = await fetch(`/api/groups/${groupId}/fill-metrics`, { method: "POST" });
+    const json = await res.json();
+    showToast(`✓ 지표 소급 완료: ${json.updated}개 스냅샷`, "ok");
+  } catch(e) {
+    showToast("실패: " + e.message, "err");
+  } finally {
+    btn.disabled = false; btn.textContent = "📊 지표 소급";
+  }
+}
+
+async function fillAllGroupMetrics() {
+  const btn = document.getElementById("fillAllMetricsBtn");
+  btn.disabled = true; btn.textContent = "계산 중...";
+  try {
+    const res  = await fetch("/api/groups/fill-metrics", { method: "POST" });
+    const json = await res.json();
+    showToast(`✓ 전체 그룹 지표 소급 완료: ${json.updated}개 스냅샷 (${json.tickers}개 종목)`, "ok");
+  } catch(e) {
+    showToast("실패: " + e.message, "err");
+  } finally {
+    btn.disabled = false; btn.textContent = "📊 전체 그룹 지표 소급";
+  }
+}
+
+// ── 한국어 이름 일괄 정리 ────────────────────────────────
+async function fixKrNames() {
+  const btn = document.getElementById("fixNamesBtn");
+  btn.disabled = true; btn.textContent = "정리 중...";
+  try {
+    const res  = await fetch("/api/fix-kr-names", { method: "POST" });
+    const json = await res.json();
+    showToast(`✓ ${json.updated}개 종목 이름 한국어로 수정됨`, "ok");
+    if (json.updated > 0) await loadGroups();
+  } catch(e) {
+    showToast("실패: " + e.message, "err");
+  } finally {
+    btn.disabled = false; btn.textContent = "🇰🇷 한국어 이름 정리";
+  }
+}
+
+// ── 그룹 데이터 수집 ──────────────────────────────────────
+async function fetchGroupData(groupId) {
+  const btn    = document.getElementById(`fb_${groupId}`);
+  const period = document.getElementById(`fp_${groupId}`).value;
+  const label  = document.getElementById(`fp_${groupId}`).selectedOptions[0].text;
+  btn.disabled = true;
+  btn.textContent = "수집 중...";
+  try {
+    const form = new FormData();
+    form.append("period", period);
+    const res  = await fetch(`/api/groups/${groupId}/fetch-data`, { method: "POST", body: form });
+    const json = await res.json();
+    showToast(`✓ ${label} 데이터 수집 완료 — ${json.inserted}개 추가`, "ok");
+  } catch(e) {
+    showToast("수집 실패: " + e.message, "err");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "📥 데이터 가져오기";
+  }
+}
+
+// ── 유틸 ─────────────────────────────────────────────────
+function escHtml(s) {
+  return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+// 초기화
+loadGroups();
+</script>
+</body>
+</html>

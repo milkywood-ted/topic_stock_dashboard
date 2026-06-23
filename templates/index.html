@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 수혜 종목 트래커</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --surface2: #242736;
+    --border: rgba(255,255,255,.08); --border2: rgba(255,255,255,.14);
+    --text: #e8eaf0; --muted: #8b8fa8; --accent: #5b8def;
+    --t1: #5b8def; --t2: #f0a842; --t3: #e05a5a;
+    --up: #4caf7d; --dn: #e05a5a; --neu: #8b8fa8;
+    --radius: 10px; --gap: 14px;
+  }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, 'Segoe UI', sans-serif; font-size: 14px; line-height: 1.5; }
+
+  /* ─ Layout ─ */
+  .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 56px; position: sticky; top:0; z-index:100; }
+  .logo { font-size: 16px; font-weight: 600; color: var(--text); display:flex; align-items:center; gap:8px; }
+  .logo-dot { width:10px; height:10px; border-radius:50%; background: var(--accent); }
+  .nav-links { display:flex; gap:6px; }
+  .nav-links a { color: var(--muted); text-decoration: none; padding: 6px 12px; border-radius: 6px; font-size: 13px; transition: all .15s; }
+  .nav-links a:hover, .nav-links a.active { color: var(--text); background: var(--surface2); }
+  .main { max-width: 1400px; margin: 0 auto; padding: 24px; }
+
+  /* ─ Summary Cards ─ */
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr)); gap: var(--gap); margin-bottom: 24px; }
+  .scard { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+  .scard-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
+  .scard-val { font-size: 26px; font-weight: 600; }
+  .scard-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  /* ─ Filters ─ */
+  .toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .filter-btn { padding: 5px 14px; border-radius: 20px; border: 1px solid var(--border2); background: transparent; color: var(--muted); cursor: pointer; font-size: 12px; transition: all .15s; }
+  .filter-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .search-input { margin-left: auto; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border2); background: var(--surface2); color: var(--text); font-size: 13px; width: 200px; outline: none; }
+  .search-input:focus { border-color: var(--accent); }
+  .collect-btn { margin-left: 8px; padding: 6px 16px; background: var(--accent); color:#fff; border:none; border-radius: 8px; font-size: 13px; cursor: pointer; transition: opacity .15s; }
+  .collect-btn:hover { opacity: .85; }
+  .collect-btn:disabled { opacity: .4; cursor: default; }
+
+  /* ─ Table ─ */
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th { font-size: 11px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; padding: 11px 14px; border-bottom: 1px solid var(--border); text-align: left; cursor: pointer; white-space: nowrap; user-select: none; background: var(--surface); }
+  thead th:hover { color: var(--text); }
+  thead th.r { text-align: right; }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--surface2); }
+  tbody td { padding: 11px 14px; vertical-align: middle; }
+  tbody td.r { text-align: right; }
+  .ticker-cell .nm  { font-weight: 600; font-size: 13px; color: var(--text); }
+  .ticker-cell .sym { font-size: 11px; color: var(--muted); font-family: 'SF Mono', monospace; margin-top: 2px; }
+  .tier-badge { display:inline-block; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 4px; }
+  .tier-1 { background: rgba(91,141,239,.15); color: var(--t1); }
+  .tier-2 { background: rgba(240,168,66,.15); color: var(--t2); }
+  .tier-3 { background: rgba(224,90,90,.15); color: var(--t3); }
+  .market-tag { font-size: 10px; color: var(--muted); background: var(--surface2); padding: 1px 6px; border-radius: 3px; }
+  .price-val { font-family: 'SF Mono', monospace; font-size: 13px; font-weight: 500; }
+  .chg { font-family: 'SF Mono', monospace; font-size: 12px; font-weight: 500; }
+  .chg.up  { color: var(--up); }
+  .chg.dn  { color: var(--dn); }
+  .chg.neu { color: var(--neu); }
+  .bar-wrap { display:flex; align-items:center; gap:6px; justify-content:flex-end; }
+  .mini-bar { flex:1; height:3px; background: rgba(255,255,255,.08); border-radius:2px; max-width:60px; }
+  .mini-fill { height:3px; border-radius:2px; }
+  .mcap { font-size: 12px; color: var(--muted); font-family: 'SF Mono', monospace; }
+  .pe   { font-size: 12px; font-family: 'SF Mono', monospace; }
+  .sector-txt { font-size: 12px; color: var(--muted); }
+  .no-data { text-align: center; padding: 40px; color: var(--muted); }
+
+  /* ─ Charts section ─ */
+  .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap); margin-bottom: 24px; }
+  .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+  .chart-title { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 14px; }
+  .chart-canvas-wrap { position: relative; height: 220px; }
+
+  /* ─ Toast ─ */
+  .toast { position:fixed; bottom:24px; right:24px; background:#1e2235; border:1px solid var(--border2); border-radius:10px; padding: 12px 18px; font-size:13px; opacity:0; transform:translateY(10px); transition: all .3s; pointer-events:none; z-index:999; }
+  .toast.show { opacity:1; transform:translateY(0); }
+  .toast.ok  { border-color: var(--up); color: var(--up); }
+  .toast.err { border-color: var(--dn); color: var(--dn); }
+
+  /* ─ Status bar ─ */
+  .status-bar { font-size: 11px; color: var(--muted); margin-bottom: 16px; display:flex; gap:16px; }
+  .status-bar span { display:flex; align-items:center; gap:4px; }
+  .dot { width:7px; height:7px; border-radius:50%; }
+
+  @media(max-width:900px){
+    .charts-grid { grid-template-columns: 1fr; }
+    .summary-grid { grid-template-columns: repeat(3,1fr); }
+  }
+  @media(max-width:600px){
+    .main { padding: 16px; }
+    .header { padding: 0 16px; }
+    .summary-grid { grid-template-columns: repeat(2,1fr); }
+    table th:nth-child(n+6), table td:nth-child(n+6) { display:none; }
+  }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="logo"><div class="logo-dot"></div>AI 수혜 종목 트래커</div>
+  <nav class="nav-links">
+    <a href="/" class="active">대시보드</a>
+    <a href="/chart">멀티 차트</a>
+    <a href="/glossary">용어 사전</a>
+    <a href="/groups">그룹 관리</a>
+    <a href="/manage">종목 관리</a>
+  </nav>
+</header>
+
+<main class="main">
+
+  <!-- 요약 카드 -->
+  <div class="summary-grid">
+    <div class="scard">
+      <div class="scard-label">추적 종목</div>
+      <div class="scard-val">{{ total }}</div>
+      <div class="scard-sub">1차·2차·3차 수혜</div>
+    </div>
+    <div class="scard">
+      <div class="scard-label">상승 종목</div>
+      <div class="scard-val" style="color:var(--up)">{{ gainers }}</div>
+      <div class="scard-sub">당일 기준</div>
+    </div>
+    <div class="scard">
+      <div class="scard-label">하락 종목</div>
+      <div class="scard-val" style="color:var(--dn)">{{ losers }}</div>
+      <div class="scard-sub">당일 기준</div>
+    </div>
+    <div class="scard">
+      <div class="scard-label">보합 종목</div>
+      <div class="scard-val" style="color:var(--neu)">{{ total - gainers - losers }}</div>
+      <div class="scard-sub">데이터 수집 전 포함</div>
+    </div>
+    <div class="scard" id="avgCard1" style="border-color:rgba(91,141,239,.3)">
+      <div class="scard-label" style="color:var(--t1)">1차 수혜 평균</div>
+      <div class="scard-val" id="avg1">—</div>
+      <div class="scard-sub">당일 등락률</div>
+    </div>
+    <div class="scard" id="avgCard2" style="border-color:rgba(240,168,66,.3)">
+      <div class="scard-label" style="color:var(--t2)">2차 수혜 평균</div>
+      <div class="scard-val" id="avg2">—</div>
+      <div class="scard-sub">당일 등락률</div>
+    </div>
+  </div>
+
+  <!-- 차트 -->
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="chart-title">티어별 당일 평균 등락률 (%)</div>
+      <div class="chart-canvas-wrap"><canvas id="tierChart" role="img" aria-label="Tier average change chart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">등락률 분포 (전 종목)</div>
+      <div class="chart-canvas-wrap"><canvas id="distChart" role="img" aria-label="Change distribution chart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- 툴바 -->
+  <div class="toolbar">
+    <button class="filter-btn active" data-f="all">전체</button>
+    <button class="filter-btn" data-f="1차">1차 수혜</button>
+    <button class="filter-btn" data-f="2차">2차 수혜</button>
+    <button class="filter-btn" data-f="3차">3차 수혜</button>
+    <button class="filter-btn" data-f="US">미국</button>
+    <button class="filter-btn" data-f="KR">한국</button>
+    <input class="search-input" id="searchInput" type="text" placeholder="종목·이름 검색...">
+    <button class="collect-btn" id="collectBtn" onclick="triggerCollect()">▶ 지금 수집</button>
+    <select id="backfillPeriod" class="search-input" style="width:90px;cursor:pointer">
+      <option value="6mo">6개월</option>
+      <option value="1y" selected>1년</option>
+      <option value="2y">2년</option>
+      <option value="5y">5년</option>
+      <option value="max">전체</option>
+    </select>
+    <button class="collect-btn" id="backfillBtn" onclick="triggerBackfill()" style="background:var(--surface2);border:1px solid var(--border2);color:var(--text)">📥 과거 데이터</button>
+    <button class="collect-btn" id="metricsBtn" onclick="triggerFillMetrics()" style="background:var(--surface2);border:1px solid var(--border2);color:var(--text)" title="기존 스냅샷에 PER/PBR 소급 계산 (종목당 수초 소요)">📊 PER/PBR 소급</button>
+    <button class="collect-btn" id="cleanupBtn" onclick="triggerCleanup()" style="background:var(--surface2);border:1px solid var(--border2);color:var(--muted)" title="주말·공휴일 중복 스냅샷 제거">🧹 중복 정리</button>
+    <button class="collect-btn" id="resetBtn" onclick="triggerReset()" style="background:var(--surface2);border:1px solid rgba(224,90,90,.4);color:var(--dn)" title="스냅샷 전체 삭제 후 재수집">⚠ 데이터 초기화</button>
+  </div>
+
+  <div class="status-bar">
+    <span><div class="dot" style="background:var(--up)"></div>마지막 수집: {{ last_collect }}</span>
+    <span id="rowCount"></span>
+  </div>
+
+  <!-- 테이블 -->
+  <div class="table-wrap">
+    <table id="mainTable">
+      <thead>
+        <tr>
+          <th onclick="sortTable('ticker')">종목 ↕</th>
+          <th onclick="sortTable('tier')">구분 ↕</th>
+          <th>섹터</th>
+          <th>시장</th>
+          <th class="r" onclick="sortTable('price')">현재가 ↕</th>
+          <th class="r" onclick="sortTable('change_pct')">등락률 ↕</th>
+          <th class="r" onclick="sortTable('mkt_cap_b')">시총(B$) ↕</th>
+          <th class="r" onclick="sortTable('pe_ratio')">P/E ↕</th>
+          <th class="r" onclick="sortTable('week52_ret')">52주 수익률 ↕</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody">
+        <tr><td colspan="9" class="no-data">데이터를 불러오는 중...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script src="/static/js/toast.js"></script>
+<script src="/static/js/ChartDrawer.js"></script>
+<script>window.BOOT = { stocks: {{ stocks_json | safe }}, summary: {{ summary_json | safe }} };</script>
+<script src="/static/js/dashboard-page.js"></script>
+</body>
+</html>

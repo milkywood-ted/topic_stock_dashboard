@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>멀티 차트 — AI 수혜 종목 트래커</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --surface2: #242736;
+    --border: rgba(255,255,255,.08); --border2: rgba(255,255,255,.14);
+    --text: #e8eaf0; --muted: #8b8fa8; --accent: #5b8def;
+    --t1: #5b8def; --t2: #f0a842; --t3: #e05a5a;
+    --radius: 10px; --gap: 14px;
+  }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, 'Segoe UI', sans-serif; font-size: 14px; line-height: 1.5; height: 100vh; display: flex; flex-direction: column; }
+
+  /* ─ Header ─ */
+  .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 56px; flex-shrink: 0; }
+  .logo { font-size: 16px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 8px; }
+  .logo-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+  .nav-links { display: flex; gap: 6px; }
+  .nav-links a { color: var(--muted); text-decoration: none; padding: 6px 12px; border-radius: 6px; font-size: 13px; transition: all .15s; }
+  .nav-links a:hover, .nav-links a.active { color: var(--text); background: var(--surface2); }
+
+  /* ─ Layout ─ */
+  .workspace { display: flex; flex: 1; overflow: hidden; }
+
+  /* ─ Sidebar ─ */
+  .sidebar { width: 310px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; transition: width .22s ease; }
+  .sidebar.collapsed { width: 36px; }
+  .sidebar.collapsed .sidebar-body,
+  .sidebar.collapsed .sidebar-header-content,
+  .sidebar.collapsed .group-section { display: none !important; }
+  .sidebar-header { padding: 10px 10px 10px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; gap: 6px; }
+  .sidebar-toggle { flex-shrink: 0; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; background: transparent; border: 1px solid var(--border2); border-radius: 5px; color: var(--muted); cursor: pointer; font-size: 10px; transition: all .15s; margin-top: 1px; }
+  .sidebar-toggle:hover { color: var(--text); border-color: var(--accent); }
+  .sidebar-header-content { flex: 1; min-width: 0; }
+  .sidebar.collapsed .sidebar-header { justify-content: center; align-items: center; padding: 10px 6px; }
+  .sidebar-title { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; }
+  .sidebar-actions { display: flex; gap: 6px; }
+  .sidebar-actions button { flex: 1; padding: 6px 0; font-size: 13px; background: var(--surface2); border: 1px solid var(--border2); color: var(--muted); border-radius: 5px; cursor: pointer; transition: all .15s; }
+  .sidebar-actions button:hover { color: var(--text); border-color: var(--accent); }
+  .tier-btn.t1 { border-color: rgba(91,141,239,.4); color: var(--t1); }
+  .tier-btn.t2 { border-color: rgba(240,168,66,.4);  color: var(--t2); }
+  .tier-btn.t3 { border-color: rgba(224,90,90,.4);   color: var(--t3); }
+  .tier-btn.t1:hover { background: rgba(91,141,239,.15); }
+  .tier-btn.t2:hover { background: rgba(240,168,66,.15); }
+  .tier-btn.t3:hover { background: rgba(224,90,90,.15); }
+  .tier-btn.t1.active { background: rgba(91,141,239,.25); border-color: var(--t1); font-weight: 700; }
+  .tier-btn.t2.active { background: rgba(240,168,66,.25);  border-color: var(--t2); font-weight: 700; }
+  .tier-btn.t3.active { background: rgba(224,90,90,.25);   border-color: var(--t3); font-weight: 700; }
+  .sidebar-body { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .stock-list { flex: 1; overflow-y: auto; padding: 8px 0; }
+  .tier-group { margin-bottom: 2px; }
+  .tier-label { font-size: 12px; font-weight: 600; padding: 8px 14px 6px; text-transform: uppercase; letter-spacing: .4px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; }
+  .tier-label:hover { opacity: .8; }
+  .tier-label .tier-chevron { font-size: 9px; color: var(--muted); transition: transform .15s; }
+  .tier-label.collapsed .tier-chevron { transform: rotate(-90deg); }
+  .tier-label.t1 { color: var(--t1); }
+  .tier-label.t2 { color: var(--t2); }
+  .tier-label.t3 { color: var(--t3); }
+  .tier-items.hidden { display: none; }
+  .stock-item { display: flex; align-items: center; gap: 8px; padding: 6px 14px; cursor: pointer; transition: background .1s; user-select: none; }
+  .stock-item:hover { background: var(--surface2); }
+  .stock-item input[type=checkbox] { accent-color: var(--accent); width: 13px; height: 13px; flex-shrink: 0; cursor: pointer; }
+  .stock-item-info { flex: 1; min-width: 0; }
+  .stock-name   { font-size: 14px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .stock-ticker { font-size: 12px; color: var(--muted); font-family: 'SF Mono', monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .color-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+  /* ─ Main ─ */
+  .main { flex: 1; display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; padding: 20px; gap: 16px; }
+  .main::-webkit-scrollbar { width: 6px; }
+  .main::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+  /* ─ Controls ─ */
+  .controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex-shrink: 0; }
+  .ctrl-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
+  .btn-group { display: flex; gap: 4px; }
+  .btn-group button { padding: 5px 12px; border-radius: 6px; border: 1px solid var(--border2); background: transparent; color: var(--muted); font-size: 12px; cursor: pointer; transition: all .15s; }
+  .btn-group button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn-group button:hover:not(.active) { color: var(--text); border-color: rgba(255,255,255,.25); }
+  .divider { width: 1px; height: 20px; background: var(--border2); margin: 0 4px; }
+  .period-groups { display: flex; align-items: center; gap: 6px; }
+  .period-group { display: flex; align-items: center; gap: 5px; }
+  .period-group + .period-group { padding-left: 6px; border-left: 1px solid var(--border2); }
+  .period-group-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; white-space: nowrap; }
+  .selected-info { margin-left: auto; font-size: 12px; color: var(--muted); }
+  .y-range { display: flex; align-items: center; gap: 5px; }
+  .y-input { width: 76px; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border2); background: var(--surface2); color: var(--text); font-size: 12px; outline: none; -moz-appearance: textfield; }
+  .y-input::-webkit-inner-spin-button { display: none; }
+  .y-input:focus { border-color: var(--accent); }
+  .y-input::placeholder { color: var(--muted); }
+  .y-sep { font-size: 11px; color: var(--muted); }
+  .y-auto-btn { padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border2); background: transparent; color: var(--muted); font-size: 12px; cursor: pointer; transition: all .15s; }
+  .y-auto-btn:hover { color: var(--text); border-color: var(--accent); }
+  .y-auto-btn.active { background: var(--surface2); color: var(--text); border-color: rgba(255,255,255,.25); }
+  .toggle-label { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); cursor: pointer; user-select: none; white-space: nowrap; }
+  .toggle-label input[type=checkbox] { accent-color: var(--accent); width: 13px; height: 13px; cursor: pointer; }
+  .toggle-label:hover { color: var(--text); }
+
+  /* ─ Chart area ─ */
+  .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); flex: 1 0 auto; padding: 20px; display: flex; flex-direction: column; overflow: hidden; min-height: 420px; }
+  .chart-canvas-wrap { flex: 1; position: relative; min-height: 0; }
+  .empty-state { display: flex; align-items: center; justify-content: center; flex: 1; color: var(--muted); font-size: 13px; flex-direction: column; gap: 8px; }
+  .empty-icon { font-size: 32px; opacity: .3; }
+
+  /* ─ Legend ─ */
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; flex-shrink: 0; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+  .legend-line { width: 20px; height: 2px; border-radius: 1px; }
+  .legend-name { color: var(--muted); }
+  .legend-price { font-family: 'SF Mono', monospace; font-size: 11px; color: var(--text); }
+
+  /* ─ Toast ─ */
+  .toast { position: fixed; bottom: 24px; right: 24px; background: #1e2235; border: 1px solid var(--border2); border-radius: 10px; padding: 12px 18px; font-size: 13px; opacity: 0; transform: translateY(10px); transition: all .3s; pointer-events: none; z-index: 999; }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.err { border-color: var(--dn); color: var(--dn); }
+
+  /* ─ Metric charts ─ */
+  .metric-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 20px; flex-shrink: 0; }
+  .metric-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
+  .metric-title { font-size: 13px; font-weight: 600; color: var(--text); }
+  .metric-sub { font-size: 11px; font-weight: 400; color: var(--muted); }
+  .metric-hint { font-size: 11px; color: var(--muted); margin-left: auto; }
+  .metric-canvas-wrap { position: relative; height: 150px; }
+
+  /* ─ Dual range slider ─ */
+  .yrange-row { display: flex; align-items: center; gap: 12px; flex-shrink: 0; padding: 2px 0; }
+  .dual-range-wrap { position: relative; flex: 1; height: 24px; display: flex; align-items: center; }
+  .dual-range-track { position: absolute; left: 0; right: 0; height: 4px; background: var(--surface2); border-radius: 2px; border: 1px solid var(--border); }
+  .dual-range-fill { position: absolute; height: 100%; background: var(--accent); border-radius: 2px; opacity: .55; }
+  .dual-thumb { position: absolute; width: 100%; appearance: none; -webkit-appearance: none; background: transparent; pointer-events: none; height: 24px; margin: 0; padding: 0; }
+  .dual-thumb::-webkit-slider-runnable-track { background: transparent; }
+  .dual-thumb::-webkit-slider-thumb { appearance: none; -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); border: 2px solid var(--surface); cursor: pointer; pointer-events: all; box-shadow: 0 0 0 1px rgba(91,141,239,.4); transition: box-shadow .15s; }
+  .dual-thumb::-webkit-slider-thumb:hover { box-shadow: 0 0 0 3px rgba(91,141,239,.25); }
+  .dual-thumb::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--accent); border: 2px solid var(--surface); cursor: pointer; pointer-events: all; }
+  .dual-thumb:focus { outline: none; }
+  .range-bound { font-size: 11px; color: var(--muted); font-family: 'SF Mono', monospace; white-space: nowrap; min-width: 48px; }
+  .range-bound.right { text-align: right; }
+
+  /* ─ 내 그룹 ─ */
+  .group-section { border-top: 1px solid var(--border); padding: 10px 10px 10px; flex-shrink: 0; }
+  .group-section-label { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; padding: 0 4px; }
+  .group-btn-list { }
+  .group-btn-count { font-size: 12px; color: var(--muted); background: rgba(255,255,255,.06); padding: 1px 6px; border-radius: 8px; margin-left: auto; margin-right: 4px; flex-shrink: 0; }
+
+  /* ─ Scrollbar ─ */
+  .stock-list::-webkit-scrollbar { width: 4px; }
+  .stock-list::-webkit-scrollbar-track { background: transparent; }
+  .stock-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  @media (max-width: 700px) {
+    .sidebar { width: 160px; }
+    .controls { gap: 6px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="logo"><div class="logo-dot"></div>AI 수혜 종목 트래커</div>
+  <nav class="nav-links">
+    <a href="/">대시보드</a>
+    <a href="/chart" class="active">멀티 차트</a>
+    <a href="/glossary">용어 사전</a>
+    <a href="/groups">그룹 관리</a>
+    <a href="/manage">종목 관리</a>
+  </nav>
+</header>
+
+<div class="workspace">
+
+  <!-- 종목 선택 사이드바 -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-header-content">
+        <div class="sidebar-title">종목 선택</div>
+        <div class="sidebar-actions">
+          <button onclick="selectAll()">전체</button>
+          <button onclick="clearAll()">해제</button>
+        </div>
+        <div class="sidebar-actions" style="margin-top:6px">
+          <button onclick="selectTier('1차')" class="tier-btn t1">1차</button>
+          <button onclick="selectTier('2차')" class="tier-btn t2">2차</button>
+          <button onclick="selectTier('3차')" class="tier-btn t3">3차</button>
+        </div>
+      </div>
+      <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()" title="접기/펼치기">◀</button>
+    </div>
+    <div class="group-section" id="groupSection" style="display:none">
+      <div class="group-section-label">내 그룹</div>
+      <div class="group-btn-list" id="groupBtnList"></div>
+    </div>
+    <div class="sidebar-body">
+      <div class="stock-list" id="stockList"></div>
+    </div>
+  </aside>
+
+  <!-- 메인 차트 영역 -->
+  <div class="main">
+
+    <div class="controls">
+      <div class="period-groups">
+        <div class="period-group">
+          <span class="period-group-label">단기</span>
+          <div class="btn-group" id="periodGroup">
+            <button data-period="1w">1주</button>
+            <button data-period="2w">2주</button>
+            <button data-period="1mo">1개월</button>
+            <button data-period="3mo" class="active">3개월</button>
+          </div>
+        </div>
+        <div class="period-group">
+          <span class="period-group-label">장기</span>
+          <div class="btn-group">
+            <button data-period="6mo">6개월</button>
+            <button data-period="1y">1년</button>
+            <button data-period="2y">2년</button>
+            <button data-period="5y">5년</button>
+            <button data-period="max">전체</button>
+          </div>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <span class="ctrl-label">단위</span>
+      <div class="btn-group" id="modeGroup">
+        <button data-mode="price" class="active">가격</button>
+        <button data-mode="norm">정규화 (%)</button>
+      </div>
+      <div class="divider"></div>
+      <span class="ctrl-label">Y축</span>
+      <div class="y-range">
+        <input type="number" id="yMin" class="y-input" placeholder="최소">
+        <span class="y-sep">~</span>
+        <input type="number" id="yMax" class="y-input" placeholder="최대">
+        <button id="yAutoBtn" class="y-auto-btn active" onclick="resetYRange()">자동</button>
+      </div>
+      <div class="divider"></div>
+      <label class="toggle-label">
+        <input type="checkbox" id="tooltipToggle" checked onchange="onTooltipToggle(this.checked)">
+        <span>툴팁</span>
+      </label>
+      <label class="toggle-label">
+        <input type="checkbox" id="perToggle" onchange="onMetricToggle('per', this.checked)">
+        <span>PER</span>
+      </label>
+      <label class="toggle-label">
+        <input type="checkbox" id="pbrToggle" onchange="onMetricToggle('pbr', this.checked)">
+        <span>PBR</span>
+      </label>
+      <label class="toggle-label">
+        <input type="checkbox" id="combinedToggle" onchange="onCombinedToggle(this.checked)">
+        <span>CAPEX + 주주환원율</span>
+      </label>
+      <label class="toggle-label">
+        <input type="checkbox" id="fcfToggle" onchange="onMetricToggle('fcf', this.checked)">
+        <span>FCF</span>
+      </label>
+      <div class="selected-info" id="selectedInfo">종목을 선택하세요</div>
+    </div>
+
+    <div class="yrange-row" id="yrangeRow" style="display:none">
+      <span class="ctrl-label">Y 범위</span>
+      <span class="range-bound" id="rangeLo">—</span>
+      <div class="dual-range-wrap">
+        <div class="dual-range-track"><div class="dual-range-fill" id="dualFill"></div></div>
+        <input type="range" id="yRangeMin" class="dual-thumb">
+        <input type="range" id="yRangeMax" class="dual-thumb">
+      </div>
+      <span class="range-bound right" id="rangeHi">—</span>
+    </div>
+
+    <div class="chart-card" id="chartCard">
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">📈</div>
+        <div>왼쪽에서 종목을 선택하면 차트가 표시됩니다</div>
+      </div>
+      <div class="chart-canvas-wrap" id="canvasWrap" style="display:none">
+        <canvas id="priceChart"></canvas>
+      </div>
+      <div class="legend" id="legend"></div>
+    </div>
+
+    <div class="metric-card" id="perCard" style="display:none">
+      <div class="metric-header">
+        <span class="metric-title">PER <span class="metric-sub">(주가수익비율)</span></span>
+        <span class="metric-hint">수집된 날짜에만 표시됩니다</span>
+      </div>
+      <div class="metric-canvas-wrap"><canvas id="perChart"></canvas></div>
+    </div>
+
+    <div class="metric-card" id="pbrCard" style="display:none">
+      <div class="metric-header">
+        <span class="metric-title">PBR <span class="metric-sub">(주가순자산비율)</span></span>
+        <span class="metric-hint">수집된 날짜에만 표시됩니다</span>
+      </div>
+      <div class="metric-canvas-wrap"><canvas id="pbrChart"></canvas></div>
+    </div>
+
+    <div class="metric-card" id="combinedCard" style="display:none">
+      <div class="metric-header">
+        <span class="metric-title">CAPEX <span class="metric-sub">(막대, 왼쪽 축·억$)</span></span>
+        <span style="font-size:12px;color:var(--muted);margin:0 6px">+</span>
+        <span class="metric-title">주주환원율 <span class="metric-sub">(선, 오른쪽 축·%)</span></span>
+        <span class="metric-hint">분기 데이터 기준</span>
+      </div>
+      <div class="metric-canvas-wrap" style="height:180px"><canvas id="combinedChart"></canvas></div>
+    </div>
+
+    <div class="metric-card" id="fcfCard" style="display:none">
+      <div class="metric-header">
+        <span class="metric-title">FCF <span class="metric-sub">(잉여현금흐름, 분기)</span></span>
+        <span class="metric-hint">단위: 억 달러 · 수집된 날짜에만 표시됩니다</span>
+      </div>
+      <div class="metric-canvas-wrap"><canvas id="fcfChart"></canvas></div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="/static/js/toast.js"></script>
+<script src="/static/js/ChartDrawer.js"></script>
+<script>window.BOOT = { stocks: {{ stocks_json | safe }}, groups: {{ groups_json | safe }} };</script>
+<script src="/static/js/chart-page.js"></script>
+</body>
+</html>
